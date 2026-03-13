@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NoAlvo Platform - Preview</title>
+  <style>
+    :root { --bg:#020617; --panel:#0f172a; --muted:#94a3b8; --brand:#0f766e; --line:#1e293b; }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,Arial;background:var(--bg);color:#e2e8f0}
+    .container{max-width:1100px;margin:0 auto;padding:0 20px}
+    header{border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(2,6,23,.9);backdrop-filter:blur(6px)}
+    nav{height:64px;display:flex;align-items:center;justify-content:space-between}
+    .menu a{color:#cbd5e1;text-decoration:none;margin-left:16px}
+    .hero{margin-top:28px;padding:36px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(120deg,#042f2e,#0f172a)}
+    .hero h1{font-size:42px;margin:0 0 8px}.hero p{color:#cbd5e1;max-width:700px}
+    .btn{display:inline-block;padding:10px 16px;border-radius:10px;text-decoration:none;font-weight:600;margin-right:10px}
+    .btn.primary{background:var(--brand);color:#ecfeff}.btn.ghost{border:1px solid #334155;color:#e2e8f0}
+    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:22px 0 30px}
+    .card{border:1px solid var(--line);background:var(--panel);padding:18px;border-radius:14px}
+    .card h3{margin:0 0 8px}.card p{margin:0;color:var(--muted)}
+    .ok{border:1px solid #14532d;background:#052e16;padding:12px;border-radius:10px;color:#bbf7d0;margin-bottom:20px}
+    footer{border-top:1px solid var(--line);padding:24px 0;color:var(--muted);text-align:center}
+    @media(max-width:900px){.grid{grid-template-columns:1fr 1fr}.hero h1{font-size:34px}}
+    @media(max-width:640px){.grid{grid-template-columns:1fr}.menu{display:none}}
+  </style>
+</head>
+<body>
+<header>
+  <div class="container">
+    <nav>
+      <strong>NoAlvo Platform</strong>
+      <div class="menu">
+        <a href="#">Vídeos</a><a href="#">Lives</a><a href="#">Matérias</a><a href="#">Eventos</a><a href="#">Ofertas</a>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="container">
+  <section class="hero">
+    <h1>Portal Oficial NoAlvo</h1>
+    <p>Prévia funcional online nesta sandbox para validação visual imediata. A versão principal continua em Next.js + Prisma + filas e integrações reais.</p>
+    <a class="btn primary" href="#">Inscrever-se</a>
+    <a class="btn ghost" href="#">Ver eventos</a>
+  </section>
+  <div class="ok">✅ Preview carregado com sucesso. Ambiente atual bloqueia npm registry (403), por isso esta demo roda sem dependências.</div>
+  <section class="grid">
+    <article class="card"><h3>Vídeos recentes</h3><p>Integração YouTube + sync agendado/webhook.</p></article>
+    <article class="card"><h3>Lives</h3><p>Destaque para ao vivo, futuras e encerradas.</p></article>
+    <article class="card"><h3>Matérias</h3><p>CMS com categorias, tags, SEO e agendamento.</p></article>
+    <article class="card"><h3>Eventos</h3><p>Ingressos gratuitos/pagos com Stripe.</p></article>
+    <article class="card"><h3>Ofertas/Ações</h3><p>Doação única e recorrente com campanhas.</p></article>
+    <article class="card"><h3>Painel privado</h3><p>Transcrições, busca por timestamp e painel profético.</p></article>
+  </section>
+</main>
+<footer>© NoAlvo Platform Preview</footer>
+</body>
+</html>
