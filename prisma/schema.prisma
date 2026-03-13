@@ -1,0 +1,372 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  EDITOR
+  MODERATOR
+  SUPPORT
+}
+
+enum ContentType {
+  VIDEO
+  LIVE
+  PREMIERE
+  SHORT
+}
+
+enum PublishStatus {
+  DRAFT
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NotificationChannel {
+  EMAIL
+  WHATSAPP
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  RETRYING
+}
+
+enum EventStatus {
+  DRAFT
+  OPEN
+  CLOSED
+  CANCELLED
+  COMPLETED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  CANCELLED
+  FREE
+  REFUNDED
+}
+
+enum DonationType {
+  ONE_TIME
+  RECURRING
+}
+
+enum PropheticStatus {
+  AGUARDANDO
+  EM_OBSERVACAO
+  CUMPRIDO
+  RELACIONADO
+}
+
+model User {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  passwordHash  String?
+  role          UserRole @default(EDITOR)
+  emailVerified DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  posts         Post[]
+  auditLogs     AuditLog[]
+  notes         TranscriptNote[]
+  prophetic     PropheticMark[]
+}
+
+model Video {
+  id               String      @id @default(cuid())
+  youtubeId        String      @unique
+  slug             String      @unique
+  type             ContentType
+  title            String
+  description      String      @db.Text
+  thumbnailUrl     String
+  url              String
+  durationSeconds  Int?
+  publishedAt      DateTime
+  status           String
+  tags             String[]
+  isFeaturedManual Boolean     @default(false)
+  viewCount        Int         @default(0)
+  metadata         VideoMetadata?
+  transcripts      VideoTranscript[]
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
+
+model VideoMetadata {
+  id            String @id @default(cuid())
+  videoId       String @unique
+  language      String?
+  category      String?
+  popularity    Int?
+  liveBroadcast String?
+  raw           Json
+  video         Video  @relation(fields: [videoId], references: [id], onDelete: Cascade)
+}
+
+model VideoTranscript {
+  id           String              @id @default(cuid())
+  videoId      String
+  source       String
+  language     String
+  isOfficial   Boolean             @default(true)
+  indexedAt    DateTime?
+  createdAt    DateTime            @default(now())
+  video        Video               @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  segments     TranscriptSegment[]
+}
+
+model TranscriptSegment {
+  id             String           @id @default(cuid())
+  transcriptId   String
+  startSeconds   Int
+  endSeconds     Int
+  text           String           @db.Text
+  searchableText String
+  transcript     VideoTranscript  @relation(fields: [transcriptId], references: [id], onDelete: Cascade)
+  notes          TranscriptNote[]
+}
+
+model TranscriptNote {
+  id          String      @id @default(cuid())
+  segmentId   String
+  authorId    String
+  content     String      @db.Text
+  theme       String?
+  isPrivate   Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  segment     TranscriptSegment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  author      User        @relation(fields: [authorId], references: [id])
+}
+
+model PropheticMark {
+  id          String         @id @default(cuid())
+  videoId      String
+  createdById String
+  title       String
+  note        String?        @db.Text
+  status      PropheticStatus @default(AGUARDANDO)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  video       Video          @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  createdBy   User           @relation(fields: [createdById], references: [id])
+}
+
+model Post {
+  id            String        @id @default(cuid())
+  slug          String        @unique
+  title         String
+  excerpt       String?
+  content       String        @db.Text
+  coverImageUrl String?
+  status        PublishStatus @default(DRAFT)
+  seoTitle      String?
+  seoDescription String?
+  publishedAt   DateTime?
+  authorId      String
+  categoryId    String?
+  tags          Tag[]
+  type          String
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  author        User          @relation(fields: [authorId], references: [id])
+  category      Category?     @relation(fields: [categoryId], references: [id])
+}
+
+model Category {
+  id        String @id @default(cuid())
+  name      String @unique
+  slug      String @unique
+  posts     Post[]
+}
+
+model Tag {
+  id        String @id @default(cuid())
+  name      String @unique
+  slug      String @unique
+  posts     Post[]
+}
+
+model Subscriber {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  whatsapp      String?
+  isConfirmed   Boolean  @default(false)
+  unsubscribeToken String @unique @default(cuid())
+  createdAt     DateTime @default(now())
+  preferences   SubscriberPreference[]
+}
+
+model SubscriberPreference {
+  id            String @id @default(cuid())
+  subscriberId  String
+  topic         String
+  enabled       Boolean @default(true)
+  subscriber    Subscriber @relation(fields: [subscriberId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberId, topic])
+}
+
+model Notification {
+  id         String              @id @default(cuid())
+  channel    NotificationChannel
+  topic      String
+  payload    Json
+  createdAt  DateTime            @default(now())
+  jobs       NotificationJob[]
+}
+
+model NotificationJob {
+  id             String    @id @default(cuid())
+  notificationId String
+  subscriberId   String
+  status         JobStatus @default(PENDING)
+  attempts       Int       @default(0)
+  lastError      String?
+  sentAt         DateTime?
+  notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+}
+
+model Event {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String
+  description String      @db.Text
+  startsAt    DateTime
+  endsAt      DateTime?
+  location    String
+  isOnline    Boolean     @default(false)
+  imageUrl    String?
+  capacity    Int?
+  status      EventStatus @default(DRAFT)
+  organizer   String
+  ticketTypes EventTicketType[]
+  orders      Order[]
+}
+
+model EventTicketType {
+  id                String   @id @default(cuid())
+  eventId           String
+  name              String
+  priceCents        Int
+  currency          String   @default("BRL")
+  quantityAvailable Int
+  maxPerPerson      Int?
+  isActive          Boolean  @default(true)
+  event             Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  orderItems        OrderItem[]
+}
+
+model Order {
+  id                   String      @id @default(cuid())
+  eventId              String
+  buyerName            String
+  buyerEmail           String
+  buyerCpf             String?
+  stripePaymentIntentId String?
+  status               OrderStatus @default(PENDING)
+  totalCents           Int
+  createdAt            DateTime    @default(now())
+  event                Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  items                OrderItem[]
+  attendees            Attendee[]
+}
+
+model OrderItem {
+  id           String @id @default(cuid())
+  orderId      String
+  ticketTypeId String
+  quantity     Int
+  unitPriceCents Int
+  order        Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  ticketType   EventTicketType @relation(fields: [ticketTypeId], references: [id])
+}
+
+model Attendee {
+  id          String @id @default(cuid())
+  orderId     String
+  name        String
+  email       String
+  checkinAt   DateTime?
+  order       Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model DonationCampaign {
+  id            String   @id @default(cuid())
+  slug          String   @unique
+  title         String
+  description   String   @db.Text
+  coverImageUrl String?
+  goalCents     Int?
+  raisedCents   Int      @default(0)
+  isUrgent      Boolean  @default(false)
+  status        String
+  updates       DonationUpdate[]
+  donations     Donation[]
+}
+
+model DonationUpdate {
+  id          String   @id @default(cuid())
+  campaignId  String
+  title       String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+  campaign    DonationCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+}
+
+model Donation {
+  id                 String       @id @default(cuid())
+  campaignId         String?
+  donorName          String
+  donorEmail         String
+  amountCents        Int
+  type               DonationType
+  stripePaymentIntentId String?
+  stripeSubscriptionId String?
+  status             String
+  createdAt          DateTime     @default(now())
+  campaign           DonationCampaign? @relation(fields: [campaignId], references: [id])
+}
+
+model FeaturedContent {
+  id          String   @id @default(cuid())
+  type        String
+  refId       String
+  isManual    Boolean  @default(false)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  priority    Int      @default(0)
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String
+  resource    String
+  resourceId  String?
+  metadata    Json?
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}

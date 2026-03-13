@@ -1,0 +1,1 @@
+export default function VideoDetailPage({ params }: { params: { slug: string } }) { return <div><h1 className="text-2xl font-bold">Vídeo: {params.slug}</h1><p>Embed, descrição e relacionados.</p></div>; }

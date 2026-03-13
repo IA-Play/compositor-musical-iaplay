@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-slate-950 text-slate-100 antialiased;
+}
+
+.container-pad {
+  @apply mx-auto max-w-7xl px-4 md:px-8;
+}
