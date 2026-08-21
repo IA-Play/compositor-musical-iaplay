@@ -1,0 +1,16 @@
+﻿{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "git pull"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "html": "IAPLAY Studio atualizado com sucesso!"
+      }
+    }
+  ]
+}

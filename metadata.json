@@ -1,0 +1,5 @@
+{
+  "name": "Compositor AI Studio",
+  "description": "A professional AI-assisted music composition SaaS. Generate lyrics, structure prompts for Suno/Udio, and manage your creative arsenal with the power of Gemini models.",
+  "requestFramePermissions": []
+}

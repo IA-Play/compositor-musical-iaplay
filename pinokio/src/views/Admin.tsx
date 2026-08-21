@@ -1,0 +1,188 @@
+
+import React, { useState, useEffect } from 'react';
+import { Navbar } from '../components/Navbar';
+import { getSystemSettings, saveSystemSettings, resetSystemSettings, initSettings } from '../services/settingsService';
+import { SystemSettings, isUserAdmin } from '../types';
+import { Save, RefreshCw, Sliders, Music, Sparkles } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
+import { useModal } from '../components/ModalProvider';
+
+const promptLabels: Record<string, string> = {
+    promptLyrics: "Mestre: Gerador de Letras",
+    promptInstrumental: "Mestre: Gerador Instrumental",
+    promptOptimize: "Mestre: Otimizador de Métrica",
+    promptStructure: "Mestre: Estruturador (Suno/Udio)",
+    promptRemix: "Mestre: Remix & Transferência de Estilo",
+    promptLength: "Mestre: Ajuste de Tamanho",
+    promptStyles: "Mestre: Extrator de Tags de Estilo",
+    promptAnalyze: "Mestre: Analista de Briefing (Assistente)",
+    promptCompress: "Mestre: Compressor de Prompt",
+    promptForensic: "Mestre: DNA Sônico (Análise Forense)",
+    promptScore: "Mestre: Leitor de Partituras (Vision OMR)"
+};
+
+export const Admin: React.FC = () => {
+    const { user } = useAuth();
+    const { showAlert, showConfirm } = useModal();
+    const navigate = useNavigate();
+    const [settings, setSettings] = useState<SystemSettings>(getSystemSettings());
+    const [activeTab, setActiveTab] = useState<'prompts' | 'lists'>('prompts');
+    const [savingSettings, setSavingSettings] = useState(false);
+
+    useEffect(() => {
+        const refreshSettings = async () => {
+            const fresh = await initSettings();
+            setSettings(fresh);
+        };
+        refreshSettings();
+    }, [user, navigate]);
+
+    const handleSave = async () => {
+        setSavingSettings(true);
+        try {
+            await saveSystemSettings(settings);
+            await showAlert("Configurações e Prompts Mestres salvos com sucesso!");
+        } catch (error: any) {
+            await showAlert(error.message || "Erro ao salvar.");
+        } finally {
+            setSavingSettings(false);
+        }
+    };
+
+    const handleReset = async () => {
+        if (await showConfirm("Restaurar todos os Prompts Mestres e Listas para os valores padrão originais?")) {
+            const def = resetSystemSettings();
+            setSettings(def);
+            await showAlert("Padrões restaurados!");
+        }
+    };
+
+    const handleListChange = (key: keyof SystemSettings, value: string) => {
+        const list = value.split('\n').filter(line => line.trim() !== '');
+        // @ts-ignore
+        setSettings({ ...settings, [key]: list });
+    };
+
+    return (
+        <div className="min-h-screen bg-background text-white font-sans">
+            <Navbar />
+            <div className="max-w-7xl mx-auto px-6 py-12">
+                <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h1 className="text-3xl font-bold flex items-center gap-2">
+                            <Sliders className="w-7 h-7 text-primary" />
+                            Painel Administrativo
+                        </h1>
+                        <p className="text-zinc-400 text-sm">Personalize os Prompts Mestres de IA e Listas de Produção do IAPLAY Studio.</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <button
+                            onClick={handleReset}
+                            className="px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl flex items-center gap-2 text-sm font-medium transition-colors border border-white/10"
+                        >
+                            <RefreshCw className="w-4 h-4 text-zinc-400" /> Restaurar Padrões
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            disabled={savingSettings}
+                            className="px-6 py-2.5 bg-primary hover:bg-[#e05626] rounded-xl flex items-center gap-2 text-sm font-bold shadow-lg shadow-primary/20 transition-all disabled:opacity-50"
+                        >
+                            <Save className="w-4 h-4" /> {savingSettings ? "Salvando..." : "Salvar Alterações"}
+                        </button>
+                    </div>
+                </header>
+
+                {/* Tabs */}
+                <div className="flex gap-4 mb-8 border-b border-white/10 overflow-x-auto custom-scrollbar pb-2">
+                    {[
+                        { id: 'prompts', label: '🧠 Prompts Mestres (IA)', icon: Sparkles },
+                        { id: 'lists', label: '🎼 Listas (Estilos & Sons)', icon: Music }
+                    ].map(tab => {
+                        const Icon = tab.icon;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as any)}
+                                className={`px-6 py-3 border-b-2 font-bold whitespace-nowrap text-sm flex items-center gap-2 transition-all ${activeTab === tab.id ? 'border-primary text-primary' : 'border-transparent text-zinc-400 hover:text-white'}`}
+                            >
+                                <Icon className="w-4 h-4" />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                <div className="min-h-[500px]">
+                    {/* TAB PROMPTS MESTRES */}
+                    {activeTab === 'prompts' && (
+                        <div className="space-y-6 animate-in fade-in">
+                            <div className="p-4 bg-primary/10 border border-primary/20 rounded-2xl text-xs text-zinc-300">
+                                <p className="font-bold text-white mb-1">💡 Dica de Engenharia de Prompt:</p>
+                                <p>Estes são os prompts mestres que guiam as inteligências artificiais na geração de letras, arranjos, métrica e estruturação Suno/Udio. Você pode customizar as tags de substituição como <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-primary">[TÍTULO DA MÚSICA]</code>, <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-primary">[IDIOMA]</code>, <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-primary">[SENTIMENTO]</code>, <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-primary">[ESTILOS]</code> e <code className="bg-black/40 px-1 py-0.5 rounded font-mono text-primary">[ARSENAL]</code>.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {['promptLyrics', 'promptInstrumental', 'promptOptimize', 'promptStructure', 'promptRemix', 'promptLength', 'promptStyles', 'promptAnalyze', 'promptCompress', 'promptForensic', 'promptScore'].map(key => (
+                                    <div key={key} className="bg-surface p-5 rounded-2xl border border-white/10 flex flex-col space-y-2">
+                                        <label className="text-xs font-bold text-primary uppercase tracking-wider block">
+                                            {promptLabels[key] || key}
+                                        </label>
+                                        <textarea
+                                            value={(settings as any)[key] || ''}
+                                            onChange={e => setSettings({ ...settings, [key]: e.target.value })}
+                                            rows={8}
+                                            className="w-full bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar resize-y"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* TAB LISTAS */}
+                    {activeTab === 'lists' && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+                            <div className="bg-surface p-5 rounded-2xl border border-white/10 space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-primary uppercase tracking-wider block">Lista de Instrumentos</label>
+                                    <p className="text-[11px] text-zinc-400">Um instrumento por linha para o Arsenal.</p>
+                                </div>
+                                <textarea
+                                    value={settings.listInstruments?.join('\n') || ''}
+                                    onChange={e => handleListChange('listInstruments', e.target.value)}
+                                    className="w-full h-96 bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar"
+                                />
+                            </div>
+
+                            <div className="bg-surface p-5 rounded-2xl border border-white/10 space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-primary uppercase tracking-wider block">Lista de Estilos Musicais</label>
+                                    <p className="text-[11px] text-zinc-400">Um estilo/gênero por linha.</p>
+                                </div>
+                                <textarea
+                                    value={settings.listStyles?.join('\n') || ''}
+                                    onChange={e => handleListChange('listStyles', e.target.value)}
+                                    className="w-full h-96 bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar"
+                                />
+                            </div>
+
+                            <div className="bg-surface p-5 rounded-2xl border border-white/10 space-y-3">
+                                <div>
+                                    <label className="text-xs font-bold text-primary uppercase tracking-wider block">Lista de Sentimentos (Vibes)</label>
+                                    <p className="text-[11px] text-zinc-400">Um sentimento/humor por linha.</p>
+                                </div>
+                                <textarea
+                                    value={settings.listSentiments?.join('\n') || ''}
+                                    onChange={e => handleListChange('listSentiments', e.target.value)}
+                                    className="w-full h-96 bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+

@@ -1,0 +1,16 @@
+﻿{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "npm install"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "html": "Instalação do IAPLAY Studio concluída com sucesso! Clique em Iniciar."
+      }
+    }
+  ]
+}

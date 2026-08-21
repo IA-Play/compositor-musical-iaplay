@@ -1,0 +1,5 @@
+# Bloquear todo acesso HTTP direto a este diretório
+Deny from all
+
+# Desativar indexação do diretório por segurança
+Options -Indexes

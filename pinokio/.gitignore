@@ -1,0 +1,29 @@
+# Node
+node_modules
+npm-debug.log*
+
+# Build
+dist
+*.local
+
+# Environment
+.env
+.env.local
+.env.php
+
+# Logs
+logs
+*.log
+
+# Editor
+.vscode
+.idea
+.DS_Store
+
+# Pinokio
+cache
+premium_uploads
+
+# OS
+Thumbs.db
+desktop.ini

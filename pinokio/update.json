@@ -1,0 +1,16 @@
+{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "npm ci"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "html": "IAPLAY Studio atualizado! Clique em Iniciar para usar a nova versão."
+      }
+    }
+  ]
+}

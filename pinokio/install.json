@@ -1,0 +1,16 @@
+{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": "npm ci && npm install"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "html": "IAPLAY Studio instalado com sucesso! Clique em Iniciar para abrir o Estúdio."
+      }
+    }
+  ]
+}
