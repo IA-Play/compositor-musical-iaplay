@@ -71,9 +71,10 @@ export default {
         icon: "fa-solid fa-download",
         text: "Instalar / Reinstalar",
         href: "install.json",
-        description: "Instalar dependências (npm ci)"
+        description: "Instalar dependências (npm install)"
       }
     ];
   }
 };
+
 
