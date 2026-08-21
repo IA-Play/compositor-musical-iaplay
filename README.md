@@ -66,6 +66,30 @@ Geradores de áudio como Suno, Udio e Mureka dependem fortemente da qualidade do
 
 ---
 
+## 📸 Interface do Aplicativo (Screenshots)
+
+### 🎵 Editor de Composição & Gerador de Prompts (Suno / Udio)
+*Editor lírico completo com inserção de metatags, controle de emoção/estilo e painel lateral com prompt pronto para cópia.*
+![Editor de Composição](docs/screenshots/editor.png)
+
+### 🎛️ Arsenal Sonoro & Textura de Som
+*Configuração detalhada de instrumentos, masterização de estúdio, ritmo, groove e atmosfera.*
+![Arsenal Sonoro](docs/screenshots/arsenal.png)
+
+### 🚀 Centro de Comando (Dashboard)
+*Gerenciamento visual e rápido de todos os seus projetos musicais.*
+![Centro de Comando](docs/screenshots/dashboard.png)
+
+### 🧠 Configuração de IA & Ollama Local (Pinokio)
+*Suporte híbrido a modelos na nuvem e modelos 100% locais e gratuitos via Ollama no Pinokio.*
+![Configuração de IA](docs/screenshots/settings.png)
+
+### ⚙️ Painel Administrativo de Prompts Mestres
+*Ajuste fino dos prompts mestres do sistema para personalizar a inteligência do estúdio.*
+![Painel Administrativo](docs/screenshots/admin.png)
+
+---
+
 ## 🚀 Como Instalar e Rodar
 
 ### Pré-requisitos
