@@ -25,7 +25,11 @@ export const Tutorial: React.FC = () => {
       return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}` : url;
   };
 
-  const videoUrl = getEmbedUrl(settings.tutorialVideoUrl || "");
+  const rawUrl = (settings.tutorialVideoUrl && !settings.tutorialVideoUrl.includes('dQw4w9WgXcQ'))
+    ? settings.tutorialVideoUrl 
+    : "https://www.youtube.com/watch?v=60ygy76sKNQ";
+
+  const videoUrl = getEmbedUrl(rawUrl);
 
   return (
     <div className="min-h-screen bg-background text-white">

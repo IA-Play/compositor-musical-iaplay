@@ -341,7 +341,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
     }
   },
 
-  tutorialVideoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  tutorialVideoUrl: "https://www.youtube.com/watch?v=60ygy76sKNQ",
 
   blogPosts: [],
   showcaseItems: [],

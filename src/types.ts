@@ -336,7 +336,7 @@ export const DEFAULT_SETTINGS: SystemSettings = {
       "description": "Genere letras profissionais e prompts estruturados para Suno AI y Udio. Optimice sus composiciones con ingeniería de prompts avanzada."
     }
   },
-  "tutorialVideoUrl": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+  "tutorialVideoUrl": "https://www.youtube.com/watch?v=60ygy76sKNQ",
   "blogPosts": [],
   "showcaseItems": [],
   "listInstruments": [
