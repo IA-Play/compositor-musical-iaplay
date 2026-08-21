@@ -1,18 +1,19 @@
-﻿{
+{
   "daemon": true,
   "run": [
     {
       "method": "shell.run",
       "params": {
-        "message": "npm run dev",
-        "on": [{ "event": "/http:\\/\\/localhost:\\d+/", "done": true }]
+        "message": "npm run dev -- --host 127.0.0.1 --port {{port}}",
+        "on": [{ "event": "/(http:\\/\\/[0-9.:]+)/", "done": true }]
       }
     },
     {
       "method": "local.set",
       "params": {
-        "url": "{{input.event[0]}}"
+        "url": "{{input.event[1]}}"
       }
     }
   ]
 }
+

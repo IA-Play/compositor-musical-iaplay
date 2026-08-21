@@ -1,9 +1,10 @@
-﻿export default {
+export default {
   version: "2.0",
   title: "IAPLAY Studio",
-  description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio e Integração com Maestro",
+  description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio/Mureka e Integração com Maestro",
   icon: "public/favicon.ico",
   menu: async (kernel, info) => {
+    let installed = info.exists("node_modules");
     let running = {
       install: info.running("install.json"),
       start: info.running("start.json"),
@@ -54,26 +55,44 @@
       }];
     }
 
-    return [
-      {
-        default: true,
-        icon: "fa-solid fa-play",
-        text: "Iniciar IAPLAY",
-        href: "start.json",
-        description: "Iniciar servidor local e abrir Estúdio"
-      },
-      {
-        icon: "fa-solid fa-arrows-rotate",
-        text: "Atualizar",
-        href: "update.json",
-        description: "Buscar atualizações do IAPLAY"
-      },
-      {
-        icon: "fa-solid fa-download",
-        text: "Instalar / Reinstalar",
-        href: "install.json",
-        description: "Instalar dependências (npm install)"
-      }
-    ];
+    if (installed) {
+      return [
+        {
+          default: true,
+          icon: "fa-solid fa-play",
+          text: "Iniciar IAPLAY",
+          href: "start.json",
+          description: "Iniciar servidor local e abrir Estúdio"
+        },
+        {
+          icon: "fa-solid fa-arrows-rotate",
+          text: "Atualizar",
+          href: "update.json",
+          description: "Buscar atualizações do IAPLAY"
+        },
+        {
+          icon: "fa-solid fa-download",
+          text: "Reinstalar Dependências",
+          href: "install.json",
+          description: "Reinstalar dependências (npm install)"
+        }
+      ];
+    } else {
+      return [
+        {
+          default: true,
+          icon: "fa-solid fa-download",
+          text: "Instalar",
+          href: "install.json",
+          description: "Instalar dependências necessárias (npm install)"
+        },
+        {
+          icon: "fa-solid fa-arrows-rotate",
+          text: "Atualizar",
+          href: "update.json"
+        }
+      ];
+    }
   }
 };
+
