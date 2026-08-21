@@ -45,10 +45,8 @@ class ApiClient {
 
                 // If we get PHP code back, the server isn't parsing PHP.
                 // Don't treat it as valid JSON response data.
-                if (data.message.includes('<?php')) {
-                    if (import.meta.env.DEV) {
-                        return { error: 'PHP backend not running. Using fallback', status: 500 };
-                    }
+                if (data.message.includes('<?php') || data.message.includes('<!DOCTYPE') || data.message.includes('<html')) {
+                    return { error: 'PHP backend not running (Local Standalone Mode)', status: 200 };
                 }
             }
 
@@ -58,8 +56,7 @@ class ApiClient {
 
             return { data: data as T, status };
         } catch (error: any) {
-            console.error(`💥 ApiClient Error [${path}]:`, error);
-            return { error: "Erro de conexão com o servidor.", status: 500 };
+            return { error: "Erro de conexão local.", status: 200 };
         }
     }
 

@@ -9,24 +9,58 @@ import { getSystemSettings } from "./settingsService";
 // --- DIRECT CLIENT-SIDE AI GENERATION ENGINE ---
 
 const getStoredUserKeys = () => {
-    let keys: Record<string, string> = {};
+    let keys: Record<string, string> = {
+        google: '',
+        openai: '',
+        groq: '',
+        cerebras: '',
+        openrouter: '',
+        mistral: '',
+        together: '',
+        ollamaUrl: 'http://localhost:11434',
+        ollamaModel: 'llama3.2'
+    };
+
     try {
         const stored = localStorage.getItem('iaplay_session');
         if (stored) {
             const parsed = JSON.parse(stored);
-            keys = {
-                google: parsed.googleApiKey || '',
-                openai: parsed.openaiApiKey || '',
-                groq: parsed.groqApiKey || '',
-                cerebras: parsed.cerebrasApiKey || '',
-                openrouter: parsed.openrouterApiKey || '',
-                mistral: parsed.mistralApiKey || '',
-                together: parsed.togetherApiKey || '',
-                ollamaUrl: parsed.ollamaUrl || 'http://localhost:11434',
-                ollamaModel: parsed.ollamaModel || 'llama3.2'
-            };
+            keys.google = parsed.googleApiKey || parsed.google || parsed.google_api_key || keys.google;
+            keys.openai = parsed.openaiApiKey || parsed.openai || parsed.openai_api_key || keys.openai;
+            keys.groq = parsed.groqApiKey || parsed.groq || parsed.groq_api_key || keys.groq;
+            keys.cerebras = parsed.cerebrasApiKey || parsed.cerebras || parsed.cerebras_api_key || keys.cerebras;
+            keys.openrouter = parsed.openrouterApiKey || parsed.openrouter || parsed.openrouter_api_key || keys.openrouter;
+            keys.mistral = parsed.mistralApiKey || parsed.mistral || parsed.mistral_api_key || keys.mistral;
+            keys.together = parsed.togetherApiKey || parsed.together || parsed.together_api_key || keys.together;
+            keys.ollamaUrl = parsed.ollamaUrl || parsed.ollama_url || keys.ollamaUrl;
+            keys.ollamaModel = parsed.ollamaModel || parsed.ollama_model || keys.ollamaModel;
         }
     } catch (e) {}
+
+    try {
+        const sys = getSystemSettings();
+        if (sys) {
+            if (!keys.google && sys.googleApiKey) keys.google = sys.googleApiKey;
+            if (!keys.groq && sys.groqApiKey) keys.groq = sys.groqApiKey;
+            if (!keys.openai && sys.openaiApiKey) keys.openai = sys.openaiApiKey;
+            if (!keys.openrouter && sys.openrouterApiKey) keys.openrouter = sys.openrouterApiKey;
+            if (!keys.cerebras && sys.cerebrasApiKey) keys.cerebras = sys.cerebrasApiKey;
+            if (!keys.mistral && sys.mistralApiKey) keys.mistral = sys.mistralApiKey;
+            if (!keys.together && sys.togetherApiKey) keys.together = sys.togetherApiKey;
+            if (sys.ollamaUrl && keys.ollamaUrl === 'http://localhost:11434') keys.ollamaUrl = sys.ollamaUrl;
+            if (sys.ollamaModel && keys.ollamaModel === 'llama3.2') keys.ollamaModel = sys.ollamaModel;
+        }
+    } catch (e) {}
+
+    try {
+        if (!keys.google && (import.meta as any).env?.VITE_GEMINI_API_KEY) {
+            keys.google = (import.meta as any).env.VITE_GEMINI_API_KEY;
+        }
+        if (!keys.groq && (import.meta as any).env?.VITE_GROQ_API_KEY) {
+            keys.groq = (import.meta as any).env.VITE_GROQ_API_KEY;
+        }
+    } catch (e) {}
+
     return keys;
 };
 
@@ -51,7 +85,7 @@ const callGoogle = async (prompt: string, systemInstruction?: string): Promise<s
         throw new Error("Nenhuma chave do Google Gemini configurada. Vá em 'Chaves de IA & Ollama' e insira sua chave da Google AI Studio (ou utilize o Ollama 100% grátis).");
     }
 
-    const models = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-lite'];
+    const models = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash-lite'];
     let lastError = "";
 
     for (const key of keys) {
@@ -118,9 +152,8 @@ const callGroq = async (prompt: string, systemInstruction?: string): Promise<str
     const models = [
         'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
-        'mixtral-8x7b-32768',
         'deepseek-r1-distill-llama-70b',
-        'gemma2-9b-it'
+        'mixtral-8x7b-32768'
     ];
     let lastError = "";
 
@@ -462,7 +495,25 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
     const settings = getSystemSettings();
 
     const endpoint = (url || userKeys.ollamaUrl || settings.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
-    const modelToUse = model || userKeys.ollamaModel || settings.ollamaModel || 'llama3.2';
+    let modelToUse = (model || userKeys.ollamaModel || settings.ollamaModel || 'llama3.2').trim();
+
+    // Consulta os modelos atualmente baixados no Ollama para evitar 400 Bad Request
+    try {
+        const tagsRes = await fetch(`${endpoint}/api/tags`).catch(() => null);
+        if (tagsRes && tagsRes.ok) {
+            const tagsData = await tagsRes.json().catch(() => ({}));
+            if (tagsData.models && Array.isArray(tagsData.models) && tagsData.models.length > 0) {
+                const availableNames: string[] = tagsData.models.map((m: any) => m.name || m.model).filter(Boolean);
+                const exactMatch = availableNames.find((n: string) => n === modelToUse || n.startsWith(`${modelToUse}:`) || modelToUse.startsWith(`${n}:`));
+                if (exactMatch) {
+                    modelToUse = exactMatch;
+                } else if (!availableNames.includes(modelToUse) && availableNames.length > 0) {
+                    // Seleciona automaticamente o primeiro modelo válido instalado
+                    modelToUse = availableNames[0];
+                }
+            }
+        }
+    } catch (e) {}
 
     // 1. Try native Ollama endpoint /api/generate
     try {
@@ -505,7 +556,7 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
         }
     } catch (e) {}
 
-    throw new Error(`Falha ao conectar no Ollama (${endpoint}). Certifique-se de que o Ollama está aberto no seu PC/Pinokio e o modelo '${modelToUse}' está disponível.`);
+    throw new Error(`Falha ao conectar no Ollama (${endpoint}). Certifique-se de que o Ollama está aberto no seu PC/Pinokio e há pelo menos um modelo disponível (modelo tentado: '${modelToUse}').`);
 };
 
 const executeProvider = async (prompt: string, provider: AIProvider, systemInstruction?: string): Promise<string> => {
@@ -614,6 +665,8 @@ export const generateLyrics = async (
         if (project.musicType === MusicType.INSTRUMENTAL) {
             prompt = settings.promptInstrumental
                 .replace("[INTRO]", "Intro")
+                .replace("[TÍTULO DA MÚSICA]", project.title)
+                .replace("[SENTIMENTO]", project.sentiment)
                 .replace("Title:", `Title: "${project.title}"`)
                 + `\n\nCONTEXT:\nTitle: ${project.title}\nFeeling: ${project.sentiment}\nStyles: ${styles.join(", ")}`;
         } else {
@@ -621,7 +674,8 @@ export const generateLyrics = async (
             prompt = settings.promptLyrics
                 .replace("[IDIOMA]", project.language)
                 .replace("[TÍTULO DA MÚSICA]", userInstruction)
-                .replace("[SENTIMENTO]", project.sentiment);
+                .replace("[SENTIMENTO]", project.sentiment)
+                .replace("[ESTILOS]", styleContext);
 
             // Se o usuário acidentalmente removeu a tag [TÍTULO DA MÚSICA] de suas configurações no painel admin,
             // garantimos que a instrução do tema ainda será passada à IA.
@@ -629,8 +683,10 @@ export const generateLyrics = async (
                 prompt += `\n\nTEMA FORNECIDO PELO USUÁRIO (Obrigatório seguir): ${userInstruction}`;
             }
 
-            // INJEÇÃO RÍGIDA DE ESTILO
-            prompt += `\n\nESTILO MUSICAL ALVO: ${styleContext} (Use APENAS o vocabulário e a temática deste gênero. Se for Gospel, use linguagem cristã. Se for Trap, use gírias urbanas. Se for MPB, use poesia culta. NÃO MISTURE GÊNEROS).`;
+            // INJEÇÃO RÍGIDA DE ESTILO (apenas se a tag [ESTILOS] não estiver já no prompt mestre)
+            if (!settings.promptLyrics.includes("[ESTILOS]")) {
+                prompt += `\n\nESTILO MUSICAL ALVO: ${styleContext} (Use APENAS o vocabulário e a temática deste gênero. Se for Gospel, use linguagem cristã. Se for Trap, use gírias urbanas. Se for MPB, use poesia culta. NÃO MISTURE GÊNEROS).`;
+            }
 
             if (project.artistInspiration) {
                 prompt += `\n\nINSPIRAÇÃO DE ARTISTA: Tente emular o estilo de escrita de: ${project.artistInspiration}, mas mantendo a fidelidade ao estilo musical solicitado acima.`;
@@ -655,9 +711,14 @@ export const generateLyrics = async (
 // 3️⃣ — OTIMIZAR LETRA
 export const optimizeLyrics = async (lyrics: string): Promise<string> => {
     const settings = getSystemSettings();
-    const prompt = settings.promptOptimize
-        .replace("[IDIOMA]", "Português (Brasil)")
-        + `\n\n[LETRA ORIGINAL]\n${lyrics}`;
+    let prompt = settings.promptOptimize
+        .replace("[IDIOMA]", "Português (Brasil)");
+    
+    if (prompt.includes("[LYRICS_CONTENT]")) {
+        prompt = prompt.replace("[LYRICS_CONTENT]", lyrics);
+    } else {
+        prompt += `\n\n[LETRA ORIGINAL]\n${lyrics}`;
+    }
     return await unifiedGenerate(prompt, AIProvider.GOOGLE);
 };
 
@@ -673,6 +734,7 @@ export const structureSunoPrompt = async (
         const styles = ensureArray(project.styles);
 
         let prompt = settings.promptStructure
+            .replace("[IDIOMA]", project.language)
             .replace("[ESTILOS]", styles.join(", "))
             .replace("[ARTISTA]", project.artistInspiration || "Creative Freedom")
             .replace("[SENTIMENTO]", project.sentiment)
@@ -728,7 +790,14 @@ export const adjustPromptLength = async (currentPrompt: string, min: number = 10
 
 export const compressFinalPrompt = async (currentPrompt: string, provider: AIProvider = AIProvider.GOOGLE): Promise<string> => {
     const settings = getSystemSettings();
-    const prompt = settings.promptCompress.replace("[INPUT_PROMPT]", currentPrompt);
+    let prompt = settings.promptCompress;
+    if (prompt.includes("[PROMPT ORIGINAL]")) {
+        prompt = prompt.replace("[PROMPT ORIGINAL]", currentPrompt);
+    } else if (prompt.includes("[INPUT_PROMPT]")) {
+        prompt = prompt.replace("[INPUT_PROMPT]", currentPrompt);
+    } else {
+        prompt += `\n\n${currentPrompt}`;
+    }
     try { return await unifiedGenerate(prompt, provider); } catch (e) { throw new Error("Falha ao comprimir."); }
 };
 
@@ -744,7 +813,14 @@ export const generateStyleTags = async (fullPrompt: string, provider: AIProvider
 
 export const analyzeBriefing = async (briefing: string): Promise<any> => {
     const settings = getSystemSettings();
-    const prompt = settings.promptAnalyze.replace("[BRIEF]", briefing);
+    let prompt = settings.promptAnalyze;
+    if (prompt.includes("[RAW USER IDEA]")) {
+        prompt = prompt.replace("[RAW USER IDEA]", briefing);
+    } else if (prompt.includes("[BRIEF]")) {
+        prompt = prompt.replace("[BRIEF]", briefing);
+    } else {
+        prompt += `\n\n${briefing}`;
+    }
     try {
         const textRaw = await unifiedGenerate(prompt, AIProvider.GOOGLE);
         const jsonMatch = textRaw.match(/\{[\s\S]*\}/);

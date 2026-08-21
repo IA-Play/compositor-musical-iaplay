@@ -177,19 +177,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ createNewProject }) => {
                     </motion.div>
                 </header>
 
-                <motion.main
-                    variants={containerVariants}
-                    initial="hidden"
-                    animate="show"
-                    className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-                >
-                    {isLoading ? (
+                <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {isLoading && projects.length === 0 ? (
                         <div className="col-span-full flex flex-col items-center justify-center py-20 gap-4">
                             <Loader2 className="w-10 h-10 text-primary animate-spin" />
                             <p className="text-zinc-500">{t('common.loading')}...</p>
                         </div>
                     ) : projects.length === 0 ? (
-                        <motion.div variants={itemVariants} className="col-span-full text-center py-20 border border-dashed border-white/10 rounded-3xl bg-surface/30 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, y: 15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="col-span-full text-center py-20 border border-dashed border-white/10 rounded-3xl bg-surface/30 backdrop-blur-sm"
+                        >
                             <Music2 className="w-16 h-16 text-zinc-600 mx-auto mb-4" />
                             <h3 className="text-xl font-bold text-zinc-300">{t('dashboard.empty_title')}</h3>
                             <p className="text-zinc-500 mt-2 mb-6">{t('dashboard.empty_desc')}</p>
@@ -203,7 +203,12 @@ export const Dashboard: React.FC<DashboardProps> = ({ createNewProject }) => {
                             const sentimentLabel = translated === translationKey ? rawSentiment : translated;
 
                             return (
-                                <motion.div variants={itemVariants} key={project.id}>
+                                <motion.div
+                                    key={project.id}
+                                    initial={{ opacity: 0, y: 15 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ duration: 0.25 }}
+                                >
                                     <Link
                                         to={`/editor/${project.id}`}
                                         className="group relative bg-surface/60 backdrop-blur-xl border border-white/5 rounded-2xl p-6 hover:border-primary/50 hover:shadow-[0_0_30px_rgba(255,107,61,0.15)] transition-all duration-300 flex flex-col h-64"
@@ -247,7 +252,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ createNewProject }) => {
                             )
                         })
                     )}
-                </motion.main>
+                </main>
             </div>
         </motion.div>
     );

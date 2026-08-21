@@ -178,10 +178,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (!user) return;
         try {
             const res = await apiClient.post<any>('/api/auth.php?action=get_user', { id: user.id });
-            if (res.error) throw new Error(res.error);
-            saveSession(rawDataToUser(res.data));
+            if (res.data && !res.error) {
+                saveSession(rawDataToUser(res.data));
+            }
         } catch (e) {
-            console.error("Refresh profile error", e);
+            // Silencioso em modo local Pinokio / offline
         }
     };
 
@@ -204,25 +205,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const updateApiKeys = async (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string }) => {
-        if (!user) return;
-
-        try {
-            const res = await apiClient.post('/api/auth.php?action=update_keys', {
-                id: user.id,
-                google: keys.google,
-                openai: keys.openai,
-                groq: keys.groq,
-                cerebras: keys.cerebras,
-                openrouter: keys.openrouter,
-                mistral: keys.mistral,
-                together: keys.together
-            });
-        } catch (e) {
-            console.warn("Update keys backend info (local mode active):", e);
-        }
-
-        const updatedUser = { ...user };
+    const updateApiKeys = (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string }) => {
+        const currentUser = user || DEFAULT_LOCAL_USER;
+        const updatedUser = { ...currentUser };
         if (keys.google !== undefined) updatedUser.googleApiKey = keys.google;
         if (keys.openai !== undefined) updatedUser.openaiApiKey = keys.openai;
         if (keys.groq !== undefined) updatedUser.groqApiKey = keys.groq;
@@ -233,6 +218,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (keys.ollamaUrl !== undefined) updatedUser.ollamaUrl = keys.ollamaUrl;
         if (keys.ollamaModel !== undefined) updatedUser.ollamaModel = keys.ollamaModel;
         saveSession(updatedUser);
+
+        // Atualiza também o cache de configurações do sistema para redundância
+        try {
+            const storedSettings = localStorage.getItem('iaplay_system_settings');
+            const currentSettings = storedSettings ? JSON.parse(storedSettings) : {};
+            const newSettings = {
+                ...currentSettings,
+                googleApiKey: updatedUser.googleApiKey,
+                groqApiKey: updatedUser.groqApiKey,
+                openaiApiKey: updatedUser.openaiApiKey,
+                cerebrasApiKey: updatedUser.cerebrasApiKey,
+                openrouterApiKey: updatedUser.openrouterApiKey,
+                mistralApiKey: updatedUser.mistralApiKey,
+                togetherApiKey: updatedUser.togetherApiKey,
+                ollamaUrl: updatedUser.ollamaUrl,
+                ollamaModel: updatedUser.ollamaModel
+            };
+            localStorage.setItem('iaplay_system_settings', JSON.stringify(newSettings));
+        } catch (e) {}
+
+        try {
+            apiClient.post('/api/auth.php?action=update_keys', {
+                id: currentUser.id,
+                google: keys.google,
+                openai: keys.openai,
+                groq: keys.groq,
+                cerebras: keys.cerebras,
+                openrouter: keys.openrouter,
+                mistral: keys.mistral,
+                together: keys.together
+            }).catch(() => {});
+        } catch (e) {}
     };
 
     const updateProfile = async (data: { name?: string; password?: string, creativeContext?: string }) => {

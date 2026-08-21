@@ -3,18 +3,20 @@ import { fetchProjects, saveProject, deleteProject } from './projectService';
 import { useProjectStore } from './projectStore';
 import { Project } from '../types';
 
+import { getLocalProjects } from './projectService';
+
 export const useProjects = (userId?: string) => {
     const setProjects = useProjectStore(s => s.setProjects);
 
     return useQuery({
-        queryKey: ['projects', userId],
+        queryKey: ['projects', userId || 'local-creator'],
         queryFn: async () => {
-            if (!userId) return [];
-            const data = await fetchProjects(userId);
+            const targetId = userId || 'local-creator';
+            const data = await fetchProjects(targetId);
             setProjects(data);
             return data;
         },
-        enabled: !!userId,
+        initialData: () => getLocalProjects(),
         staleTime: 1000 * 60 * 5, // 5 minutes
     });
 };

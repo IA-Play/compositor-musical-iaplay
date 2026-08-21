@@ -114,7 +114,7 @@ export const Settings: React.FC = () => {
     const handleSaveKeys = async () => {
         setIsSaving(true);
         try {
-            await updateApiKeys({
+            updateApiKeys({
                 google: keys.google,
                 openai: keys.openai,
                 groq: keys.groq,
@@ -125,9 +125,9 @@ export const Settings: React.FC = () => {
                 ollamaUrl: keys.ollamaUrl,
                 ollamaModel: keys.ollamaModel
             });
-            await refreshProfile();
             await showAlert("Configurações e Chaves de IA salvas com sucesso!");
         } catch (e) {
+            console.error("Save keys error:", e);
             await showAlert("Erro ao salvar chaves API.");
         } finally {
             setIsSaving(false);
