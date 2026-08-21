@@ -2,10 +2,17 @@
   "daemon": true,
   "run": [
     {
+      "when": "{{!exists('node_modules')}}",
+      "method": "shell.run",
+      "params": {
+        "message": "npm install"
+      }
+    },
+    {
       "method": "shell.run",
       "params": {
         "message": "npm run dev -- --host 127.0.0.1 --port {{port}}",
-        "on": [{ "event": "/(http:\\/\\/[0-9.:]+)/", "done": true }]
+        "on": [{ "event": "/(http:\\/\\/[a-zA-Z0-9.:_-]+)/", "done": true }]
       }
     },
     {

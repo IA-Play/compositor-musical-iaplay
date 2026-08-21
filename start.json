@@ -2,6 +2,13 @@
   "daemon": true,
   "run": [
     {
+      "when": "{{!exists('node_modules')}}",
+      "method": "shell.run",
+      "params": {
+        "message": "npm install"
+      }
+    },
+    {
       "method": "shell.run",
       "params": {
         "message": "npm run dev -- --host 127.0.0.1 --port {{port}}",
