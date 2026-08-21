@@ -1,8 +1,8 @@
 <div align="center">
 
-# 🎵 IAPLAY Studio — Compositor Musical com IA
+# 🎵 IAPLAY Studio — Estúdio de Letras & Prompts Musicais com IA
 
-**O Estúdio Definitivo para Criação de Letras, Estruturação de Prompts para Suno & Udio e Gestão Musical Inteligente.**
+**Crie letras estruturadas com metatags e prompts sonoros avançados prontos para copiar e colar no Suno AI, Udio e Mureka.**
 
 [![Pinokio Compatible](https://img.shields.io/badge/Pinokio-Ready-blue?style=for-the-badge&logo=electron)](https://pinokio.computer)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
@@ -11,54 +11,58 @@
 [![Gemini](https://img.shields.io/badge/Google_Gemini-AI-orange?style=for-the-badge&logo=google)](https://ai.google.dev/)
 [![Ollama](https://img.shields.io/badge/Ollama-Local_AI-black?style=for-the-badge)](https://ollama.com/)
 
-[Funcionalidades](#-principais-funcionalidades) • [Instalação](#-como-instalar-e-rodar) • [Pinokio](#-execução-via-pinokio) • [Estrutura](#-estrutura-do-projeto) • [Licença](#-licença)
+[Como Funciona](#-como-funciona) • [Funcionalidades](#-principais-funcionalidades) • [Instalação](#-como-instalar-e-rodar) • [Pinokio](#-execução-via-pinokio) • [Estrutura](#-estrutura-do-projeto)
 
 </div>
 
 ---
 
+> 💡 **Como Funciona:** O **IAPLAY Studio** atua como o seu copiloto inteligente de composição e engenharia de prompts. O aplicativo **não gera o áudio diretamente**, mas cria, formata e otimiza toda a estrutura lírica com metatags precisas e gera os prompts sonoros ideais para você **copiar com 1 clique e colar nas ferramentas de geração musical** ([Suno AI](https://suno.com), [Udio](https://udio.com), [Mureka](https://mureka.ai) ou Maestro).
+
+---
+
 ## 📖 Sobre o Projeto
 
-O **IAPLAY Studio** (Compositor AI Studio) é uma plataforma SaaS e desktop profissional desenvolvida para transformar a forma como compositores, produtores musicais e criadores de conteúdo criam músicas com Inteligência Artificial.
+O **IAPLAY Studio** (Compositor AI Studio) foi desenvolvido para elevar a qualidade e o controle criativo na produção de músicas com IA.
 
-Projetado especificamente para ecossistemas de geração musical como **Suno AI**, **Udio** e **Maestro**, o IAPLAY Studio conecta modelos de linguagem avançados (Google Gemini e modelos locais via Ollama) a um fluxo de trabalho intuitivo de composição, estruturação de metatags, criação de prompts sonoros e gerenciamento de projetos.
+Geradores de áudio como Suno, Udio e Mureka dependem fortemente da qualidade dos prompts e da estrutura correta das metatags nas letras para entregar músicas sem alucinações vocais ou cortes bruscos. O IAPLAY Studio conecta modelos avançados de linguagem (**Google Gemini** e modelos locais via **Ollama**) a uma interface especializada que gera letras completas, esquemas de rimas, métricas e prompts de estilo de alta fidelidade.
 
 ---
 
 ## ✨ Principais Funcionalidades
 
-### 1. 🪄 Wizard de Criação Guiada
-- **Geração Passo a Passo:** Crie uma música completa do zero definindo tema, gênero, sentimento/emoção, ritmo e público-alvo.
-- **Mapeamento de Emoções:** Seleção visual de humores (Alegre, Melancólico, Agressivo, Romântico, Calmo, Intenso) que moldam o tom lírico e harmônico.
-- **Configuração de Metadados:** Definição de tom, BPM, instrumentos principais e referências de artistas.
+### 1. 🪄 Wizard de Composição Guiada
+- **Criação Passo a Passo:** Desenvolva ideias musicais a partir de temas, público-alvo, gêneros e subgêneros.
+- **Mapeamento Emocional:** Escolha a vibe/sentimento da faixa (Alegre, Melancólico, Agressivo, Romântico, Calmo, Intenso) para guiar automaticamente o tom lírico e harmônico.
+- **Configuração de Parâmetros:** Defina BPM sugerido, tonalidade, referências e instrumentação predominante.
 
-### 2. ✍️ Editor de Letras & Metatags (Suno & Udio)
-- **Estruturação Inteligente de Metatags:** Inserção e formatação automática de tags padrão da indústria (`[Intro]`, `[Verse]`, `[Pre-Chorus]`, `[Chorus]`, `[Bridge]`, `[Guitar Solo]`, `[Drop]`, `[Outro]`).
-- **Geração Seção por Seção:** Crie ou reescreva versos específicos mantendo a coerência lírica, métrica e esquema de rimas.
-- **Assistente de Rimas & Sílabas Poéticas:** Sugestões contextuais de rimas ricas, metáforas e contagem silábica para encaixe no ritmo.
-- **Editor Rich Text:** Suporte completo a edição rica, formatação, notas de produção e cópia em 1 clique para o Suno/Udio.
+### 2. ✍️ Editor de Letras & Metatags (Suno, Udio & Mureka)
+- **Estruturação por Metatags Padrão:** Inserção e formatação automática de tags compreendidas pelas IAs de áudio:
+  `[Intro]`, `[Verse]`, `[Pre-Chorus]`, `[Chorus]`, `[Bridge]`, `[Guitar Solo]`, `[Drop]`, `[Outro]`.
+- **Geração Seção por Seção:** Crie a letra inteira ou regenere versos específicos sem perder o contexto do restante da música.
+- **Assistente de Rimas & Sílabas Poéticas:** Sugestões contextuais de rimas ricas, metáforas e contagem silábica para fluidez rítmica.
+- **Editor Rich Text com Notas:** Espaço para anotações de produção e formatação limpa.
 
 ### 3. 🎛️ Engenharia de Prompts de Estilo
-- **Gerador de Estilos & Timbres:** Construção de descrições sonoras detalhadas combinando subgêneros, épocas, instrumentos acústicos/sintetizados, ambiências e técnicas de mixagem/masterização.
-- **Otimizador Anti-Alucinação:** Filtros e formatação testada para evitar comandos ignorados pelas IAs de áudio e obter a máxima fidelidade sonora.
+- **Gerador de Prompts Sonoros:** Cria descrições detalhadas de instrumentação, timbres, ambiências (reverb, space), décadas/eras e técnicas de mixagem e masterização.
+- **Otimizador Anti-Alucinação:** Formatação testada para evitar comandos ignorados pelas IAs de áudio e garantir a melhor interpretação pelo motor sonoro.
 
-### 4. 🧰 Arsenal Criativo & Presets
-- **Biblioteca de Estruturas Musicais:** Templates prontos para diversos estilos (Pop, Rock, Trap, Funk, Sertanejo, Eletrônica, Gospel, Lo-Fi, Reggaeton, etc.).
-- **Banco de Ideias e Ganchos (Hooks):** Repositório de ideias de refrões marcantes, pontes e transições.
-- **Presets Personalizados:** Salve suas fórmulas musicais e configurações favoritas para reutilizar em futuros projetos.
+### 4. 📋 Cópia Rápida em 1 Clique
+- Botões dedicados para **Copiar Letra Completa** (já com metatags prontas) e **Copiar Prompt de Estilo**, agilizando o fluxo de colar direto no Suno, Udio ou Mureka.
 
-### 5. 🧠 Suporte Híbrido a Inteligências Artificiais
-- **Google Gemini API:** Integração com os modelos mais recentes da Google (Gemini 2.5 Flash, Pro) para alta velocidade e criatividade avançada.
-- **Ollama (100% Local & Privado):** Suporte nativo para rodar modelos locais (Llama 3, Mistral, Gemma, Phi-3) direto da sua máquina sem custos de API e com privacidade total.
+### 5. 🧰 Arsenal Criativo & Presets
+- **Modelos de Estruturas Musicais:** Templates clássicos e modernos para Pop, Rock, Trap, Funk, Sertanejo, Eletrônica, Gospel, Lo-Fi, Reggaeton e mais.
+- **Banco de Ganchos (Hooks):** Ideias de refrões marcantes, pontes e transições.
+- **Fórmulas Personalizadas:** Salve seus estilos e estruturas preferidos para reutilizar rapidamente.
 
-### 6. 💰 Calculadora de Royalties & Divisão de Splits
-- **Divisão de Direitos:** Calcule porcentagens de composição e produção entre co-autores.
-- **Simulador de Streaming:** Estimativas de retorno financeiro e projeções de ganhos por plataforma (Spotify, Apple Music, YouTube).
+### 6. 🧠 Suporte Híbrido a Modelos de IA
+- **Google Gemini API:** Integração com os modelos mais rápidos e criativos da Google (Gemini 2.5 Flash, Pro) em nuvem.
+- **Ollama (100% Local & Privado):** Suporte nativo para rodar modelos locais (Llama 3, Mistral, Gemma, Phi-3) direto da sua máquina, sem custos de API e com total privacidade.
 
-### 7. 🌐 Painel Completo, Tutoriais & Internacionalização
-- **Multi-idiomas:** Suporte nativo a Português (PT-BR), Inglês (EN) e Espanhol (ES).
-- **Tour Guiado & Tutoriais:** Aulas práticas integradas para dominar a composição com IA.
-- **Painel Administrativo & Dashboard:** Gestão completa de projetos, métricas, usuários e configurações do sistema.
+### 7. 🌐 Internacionalização, Tutoriais & Dashboard
+- **Multi-idiomas:** Interface e geração com suporte a Português (PT-BR), Inglês (EN) e Espanhol (ES).
+- **Guia e Tutoriais:** Dicas práticas integradas para extrair o melhor resultado do Suno, Udio e Mureka.
+- **Gerenciador de Projetos:** Salve, organize, duplique e exporte todo o seu histórico de composições.
 
 ---
 
@@ -67,7 +71,7 @@ Projetado especificamente para ecossistemas de geração musical como **Suno AI*
 ### Pré-requisitos
 - **Node.js** (versão 18 ou superior)
 - **NPM** ou **Yarn** / **PNPM**
-- Chave de API do **Google Gemini** *(opcional, caso utilize Gemini)* ou **Ollama** instalado *(opcional, caso utilize IA local)*.
+- Chave de API do **Google Gemini** *(opcional, se usar Gemini)* ou **Ollama** instalado *(opcional, se usar IA local)*.
 
 ### Passo a Passo
 
