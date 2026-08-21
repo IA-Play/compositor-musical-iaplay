@@ -152,8 +152,8 @@ const callGroq = async (prompt: string, systemInstruction?: string): Promise<str
     const models = [
         'llama-3.3-70b-versatile',
         'llama-3.1-8b-instant',
-        'deepseek-r1-distill-llama-70b',
-        'mixtral-8x7b-32768'
+        'llama3-70b-8192',
+        'llama3-8b-8192'
     ];
     let lastError = "";
 
@@ -168,7 +168,7 @@ const callGroq = async (prompt: string, systemInstruction?: string): Promise<str
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${key}`
+                        'Authorization': `Bearer ${key.trim()}`
                     },
                     body: JSON.stringify({
                         model,
@@ -179,7 +179,9 @@ const callGroq = async (prompt: string, systemInstruction?: string): Promise<str
 
                 if (!res.ok) {
                     const errData = await res.json().catch(() => ({}));
-                    lastError = errData?.error?.message || `HTTP ${res.status}`;
+                    const msg = errData?.error?.message || `HTTP ${res.status}`;
+                    console.warn(`[Groq] Modelo ${model} falhou:`, msg);
+                    lastError = msg;
                     continue;
                 }
 
@@ -190,6 +192,7 @@ const callGroq = async (prompt: string, systemInstruction?: string): Promise<str
                 }
             } catch (err: any) {
                 lastError = err.message || String(err);
+                console.warn(`[Groq] Erro de rede no modelo ${model}:`, lastError);
             }
         }
     }
@@ -517,6 +520,9 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
 
     // 1. Try native Ollama endpoint /api/generate
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+
         const res = await fetch(`${endpoint}/api/generate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -525,8 +531,10 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
                 prompt: prompt,
                 system: systemInstruction,
                 stream: false
-            })
+            }),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
 
         if (res.ok) {
             const data = await res.json();
@@ -536,6 +544,9 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
 
     // 2. Fallback to OpenAI-compatible /v1/chat/completions
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000);
+
         const messages: any[] = [];
         if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
         messages.push({ role: 'user', content: prompt });
@@ -547,8 +558,11 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
                 model: modelToUse,
                 messages,
                 temperature: 0.7
-            })
+            }),
+            signal: controller.signal
         });
+        clearTimeout(timeoutId);
+
         if (res.ok) {
             const data = await res.json();
             const text = data?.choices?.[0]?.message?.content;
