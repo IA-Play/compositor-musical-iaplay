@@ -15,15 +15,25 @@
     "lucide-react": "^0.562.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
-    "react-router-dom": "^7.12.0",
+    "react-router-dom": "7.18.2",
     "tailwind-merge": "^3.5.0",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@google/genai": "^1.38.0",
+    "@google/genai": "1.52.0",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.1.2",
     "typescript": "~5.8.2",
-    "vite": "^7.3.1"
+    "vite": "7.3.6"
+  },
+  "overrides": {
+    "brace-expansion": "2.1.4",
+    "minimatch": "9.0.9",
+    "nanoid": "3.3.18",
+    "picomatch": "4.0.5",
+    "postcss": "8.5.26",
+    "protobufjs": "7.6.5",
+    "rollup": "4.62.5",
+    "ws": "8.21.3"
   }
 }
