@@ -52,7 +52,41 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 
 ---
 
-## 📸 Fluxo de Produção Musical Neural (Screenshots da Nova Versão)
+## 📸 Galeria Visual & Tour pelas Ferramentas (Screenshots)
+
+### 🎵 1. Editor de Composição & Painel Neural Completo
+*Editor lírico com metatags, controle de emoção/estilo, prompt estruturado e acionamento direto do motor neural YuE2.*
+![Editor de Composição Completo](docs/screenshots/editor_full_workflow.png)
+
+### 💡 2. Wizard de Criação: Da Ideia ao Briefing
+*Transforme uma ideia simples, frase ou história em uma música estruturada com gênero e emoção ideais.*
+![Wizard de Ideia Inicial](docs/screenshots/wizard_idea_prompt.png)
+
+### 🎸 3. Modo Artista & Engenharia Reversa (DNA Sônico)
+*Extraia a essência técnica e o perfil vocal de qualquer artista ou banda sem violar termos de uso.*
+![Referência de Artista](docs/screenshots/modal_artist_reference.png)
+![Autópsia Musical DNA Sônico](docs/screenshots/modal_sonic_dna.png)
+
+### 🎛️ 4. Arsenal Sonoro & Textura de Áudio
+*Seleção cirúrgica de instrumentos, masterização de estúdio, ritmo, groove, ambiência e efeitos analógicos.*
+![Configuração do Arsenal Sonoro](docs/screenshots/arsenal_modal_config.png)
+![Visão Geral do Arsenal](docs/screenshots/arsenal.png)
+
+### 🚀 5. Centro de Comando (Dashboard de Projetos)
+*Gerenciamento visual rápido de todos os seus projetos musicais, letras e histórico de versões.*
+![Centro de Comando](docs/screenshots/dashboard.png)
+
+### 🧠 6. Configuração de IA Híbrida & Ollama Local (Pinokio)
+*Conexão com Gemini na nuvem ou modelos 100% locais, gratuitos e privados via Ollama (Gemma 2, Llama 3).*
+![Configuração de IA](docs/screenshots/settings.png)
+
+### ⚙️ 7. Painel Administrativo de Prompts Mestres
+*Ajuste fino dos prompts mestres do sistema para personalizar a inteligência e as regras de composição do estúdio.*
+![Painel Administrativo](docs/screenshots/admin.png)
+
+---
+
+## ⚡ Fluxo de Geração Musical Neural YuE2 3B (Direto no App)
 
 ### 1. Síntese Semântica de Áudio (Tokens YuE2 3B)
 *Geração e monitoramento de tokens acústicos com contagem em tempo real e tempo decorrido.*
@@ -65,6 +99,7 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 ### 3. Música Pronta com Masterização Anti-IA e Player Integrado
 *Áudio gerado diretamente no app, com corte de artefatos de IA, player integrado e download de WAV Master 48kHz.*
 ![Música Concluída YuE2](docs/screenshots/yue2_generation_finished.png)
+
 
 
 ---

@@ -34,7 +34,7 @@ const loadLocalSettings = (): SystemSettings => {
                 promptCompress: parsed.promptCompress || DEFAULT_SETTINGS.promptCompress,
                 promptForensic: parsed.promptForensic || DEFAULT_SETTINGS.promptForensic,
                 promptScore: parsed.promptScore || DEFAULT_SETTINGS.promptScore,
-                blogPosts: (parsed.blogPosts && parsed.blogPosts.length > 0 && parsed.blogPosts.some((p: any) => p.id === 'post-yue2-standalone-musica-neural'))
+                blogPosts: (parsed.blogPosts && parsed.blogPosts.length > 0 && parsed.blogPosts.some((p: any) => p.id === 'post-guia-definitivo-iaplay-studio-completo'))
                     ? parsed.blogPosts
                     : DEFAULT_SETTINGS.blogPosts,
                 showcaseItems: (parsed.showcaseItems && parsed.showcaseItems.length > 0)
