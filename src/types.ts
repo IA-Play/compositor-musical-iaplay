@@ -365,8 +365,45 @@ export const DEFAULT_SETTINGS: SystemSettings = {
     }
   },
   "tutorialVideoUrl": "https://www.youtube.com/watch?v=60ygy76sKNQ",
-  "blogPosts": [],
-  "showcaseItems": [],
+  "blogPosts": [
+    {
+      "id": "post-yue2-standalone-musica-neural",
+      "slug": "geracao-musical-neural-direto-no-iaplay-studio-yue2",
+      "coverImage": "/screenshots/yue2_generation_finished.png",
+      "createdAt": "2026-09-25T14:30:00.000Z",
+      "translations": {
+        "pt": {
+          "title": "Nova Versão 2.0: Crie Músicas Completas Direto no IAPLAY Studio com o Motor YuE2 Local",
+          "excerpt": "Agora o IAPLAY Studio não cria apenas letras e prompts: ele gera músicas completas em alta fidelidade estéreo 48kHz diretamente na sua GPU com YuE2 3B, transcrição de covers via SheetSage2 e humanizador anti-detecção.",
+          "keywords": "YuE2, Geração Musical com IA, IAPLAY Studio, Criação de Cover, Anti-IA, Suno, Udio, Produção Musical",
+          "content": "<h2>Revolução no IAPLAY Studio: Motor Neural YuE2 100% Integrado e Independente</h2><p>Temos o orgulho de anunciar a maior atualização da história do <strong>IAPLAY Studio</strong>. Antes, o aplicativo era focado na composição lírica com metatags e engenharia de prompts avançada para plataformas como Suno AI e Udio. Agora, o IAPLAY Studio se torna uma <strong>Workstation Musical de IA completa</strong> capaz de sintetizar músicas inteiras com vocais expressivos e arranjo instrumental completo na sua própria máquina!</p><h3>Principais Recursos da Nova Versão:</h3><ul><li><strong>Geração Musical Local em 48kHz Estéreo:</strong> Usando a arquitetura YuE2 3B com Flow Matching e quantização Int8/BF16, você produz canções de nível comercial sem filas, assinaturas ou limites de créditos.</li><li><strong>Modo Cover Inteligente (SheetSage2 / MERT2):</strong> Faça o upload de qualquer áudio de referência (.mp3, .wav, .m4a) e deixe o sistema transcrever automaticamente acordes e melodia para recriar ou rearmonizar a faixa.</li><li><strong>Duração Expandida até 10 Minutos (600s):</strong> Chega de limitações de 3 a 5 minutos. Agora você pode gerar faixas contínuas de 30 segundos até 10 minutos completos com seleção rápida de chips.</li><li><strong>Masterização Anti-Detecção de IA:</strong> Sistema espectral que remove assinaturas digitais, artefatos de vocoders sintéticos e adiciona calor analógico de fita magnética para distribuição segura nas plataformas de streaming.</li></ul><h3>Passo a Passo: Como Funciona no Aplicativo</h3><h4>1. Síntese Semântica de Áudio</h4><p>Ao clicar no botão <strong>Produzir Música (YuE2)</strong> no Editor de Letras, o IAPLAY analisa a letra, o estilo sonoro e os prompts de produção, processando os tokens semânticos e acústicos em tempo real com barra de progresso e contagem de tokens.</p><p><img src=\"/screenshots/yue2_generation_tokens.png\" alt=\"Geração de tokens semânticos YuE2 no IAPLAY Studio\" class=\"rounded-2xl border border-white/10 shadow-2xl my-6 w-full\" /></p><h4>2. Decodificação Neural Acústica</h4><p>Na segunda etapa, o decodificador neural (DiT Flow & VAE 48kHz Stereo) renderiza as camadas de voz e instrumentos em alta fidelidade espacial.</p><p><img src=\"/screenshots/yue2_generation_decoding.png\" alt=\"Decodificação neural do áudio YuE2\" class=\"rounded-2xl border border-white/10 shadow-2xl my-6 w-full\" /></p><h4>3. Áudio Pronto com Masterização Humanizada</h4><p>Após a conclusão, o player integrado permite reproduzir a faixa instantaneamente, aplicar o filtro Anti-IA adicional se desejado e baixar o arquivo <strong>WAV Master 48kHz 24-bit</strong> com um clique!</p><p><img src=\"/screenshots/yue2_generation_finished.png\" alt=\"Música gerada com player e download WAV\" class=\"rounded-2xl border border-white/10 shadow-2xl my-6 w-full\" /></p><p>A nova versão já está disponível para instalação via Pinokio ou diretamente pelo nosso repositório no GitHub.</p>"
+        },
+        "en": {
+          "title": "Version 2.0: Generate Complete Songs Directly in IAPLAY Studio with Local YuE2 Engine",
+          "excerpt": "IAPLAY Studio now generates full songs in high-fidelity 48kHz stereo on your GPU using YuE2 3B, SheetSage2 cover transcription, and anti-AI humanizer.",
+          "keywords": "YuE2, AI Music Generation, IAPLAY Studio, Cover Maker, Anti-AI, Suno, Udio, Music Production",
+          "content": "<h2>Revolution in IAPLAY Studio: 100% Standalone YuE2 Neural Engine</h2><p>IAPLAY Studio is now a full AI Audio Workstation that creates complete songs with expressive vocals and multi-instrument arrangements directly on your machine!</p><h3>What's New:</h3><ul><li><strong>Local 48kHz Stereo Synthesis:</strong> Powered by YuE2 3B with Flow Matching.</li><li><strong>SheetSage2 Cover Mode:</strong> Upload reference audio to extract chords and melody automatically.</li><li><strong>Up to 10 Minutes Duration:</strong> Produce songs up to 600s long.</li><li><strong>Anti-AI Mastering:</strong> Removes AI watermarks and adds analog tape warmth.</li></ul><p><img src=\"/screenshots/yue2_generation_finished.png\" alt=\"YuE2 Completed Generation\" class=\"rounded-2xl border border-white/10 shadow-2xl my-6 w-full\" /></p>"
+        },
+        "es": {
+          "title": "Versión 2.0: Crea Canciones Completas Directamente en IAPLAY Studio con Motor YuE2 Local",
+          "excerpt": "IAPLAY Studio ahora genera canciones completas en estéreo 48kHz de alta fidelidad con YuE2 3B, transcripción de covers con SheetSage2 y masterización anti-detección de IA.",
+          "keywords": "YuE2, Generación de Música con IA, IAPLAY Studio, Cover, Anti-IA, Suno, Udio, Producción Musical",
+          "content": "<h2>Revolución en IAPLAY Studio: Motor Neural YuE2 100% Integrado</h2><p>¡IAPLAY Studio ahora es una estación de trabajo completa para componer letras y generar canciones completas con voces expresivas e instrumentos en tu propia computadora!</p><h3>Novedades:</h3><ul><li><strong>Generación Local en 48kHz:</strong> Motor YuE2 3B de alta calidad.</li><li><strong>Modo Cover con SheetSage2:</strong> Sube tu audio para extraer armonía y melodía.</li><li><strong>Duración de hasta 10 Minutos:</strong> Genera canciones completas de hasta 600 segundos.</li><li><strong>Masterización Anti-IA:</strong> Elimina marcas de agua sintéticas y agrega calidez analógica.</li></ul><p><img src=\"/screenshots/yue2_generation_finished.png\" alt=\"Generación YuE2 completada\" class=\"rounded-2xl border border-white/10 shadow-2xl my-6 w-full\" /></p>"
+        }
+      }
+    }
+  ],
+  "showcaseItems": [
+    {
+      "id": "showcase-yue2-gospel-ballad",
+      "title": "Minh'alma Engrandece ao Senhor (Cover YuE2)",
+      "style": "Worship Ballad / Contemporary Gospel",
+      "promptUsed": "arrangement and gospel-inspired vocal harmonies; ethereal atmosphere with dry reverb, 70 BPM tempo with a steady, uplifting groove; cinematic depth and pristine production with a polished commercial sound.",
+      "audioUrl": "/outputs/Minh_alma_engrandece_ao_Senhor_Adorado__Ao_Vivo__-_Musile_Records__128k__yue2_humanized.wav",
+      "coverImage": "/screenshots/yue2_generation_finished.png",
+      "platform": "Suno"
+    }
+  ],
   "listInstruments": [
     "808 Bass",
     "Electric Guitar",

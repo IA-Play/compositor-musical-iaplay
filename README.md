@@ -52,6 +52,23 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 
 ---
 
+## 📸 Fluxo de Produção Musical Neural (Screenshots da Nova Versão)
+
+### 1. Síntese Semântica de Áudio (Tokens YuE2 3B)
+*Geração e monitoramento de tokens acústicos com contagem em tempo real e tempo decorrido.*
+![Síntese Semântica YuE2](docs/screenshots/yue2_generation_tokens.png)
+
+### 2. Decodificação Neural Acústica
+*Renderização de alta fidelidade das faixas vocais e instrumentais (DiT Flow & VAE 48kHz Stereo).*
+![Decodificação Neural YuE2](docs/screenshots/yue2_generation_decoding.png)
+
+### 3. Música Pronta com Masterização Anti-IA e Player Integrado
+*Áudio gerado diretamente no app, com corte de artefatos de IA, player integrado e download de WAV Master 48kHz.*
+![Música Concluída YuE2](docs/screenshots/yue2_generation_finished.png)
+
+
+---
+
 ## ⚡ Instalação em 1-Clique via Pinokio
 
 O IAPLAY Studio foi projetado para instalação e execução simplificada através do ecossistema [Pinokio](https://pinokio.computer):
