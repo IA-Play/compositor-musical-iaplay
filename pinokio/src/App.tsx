@@ -8,6 +8,7 @@ import { Wizard } from './views/Wizard';
 import { Admin } from './views/Admin';
 import { Settings } from './views/Settings';
 import { Tutorial } from './views/Tutorial';
+import { Landing } from './views/Landing';
 import { Project, INITIAL_PROJECT } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ModalProvider } from './components/ModalProvider';
@@ -83,8 +84,14 @@ const EditorWrapper = () => {
 
   if (!project) return <div className="h-screen bg-zinc-950 flex flex-col items-center justify-center text-zinc-500 gap-4"><div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin"></div><p>Carregando Projeto...</p></div>;
 
-  const updateLocalProject = (updated: Project) => {
-    updateLocally(updated);
+  const updateLocalProject = (updatedOrFn: Project | ((prev: Project) => Project)) => {
+    if (typeof updatedOrFn === 'function') {
+      if (!project) return;
+      const resolved = updatedOrFn(project);
+      updateLocally(resolved);
+    } else {
+      updateLocally(updatedOrFn);
+    }
   };
 
   const handleManualSave = async () => {
@@ -241,6 +248,7 @@ const AppContent: React.FC = () => {
         <Route path="/admin" element={<Admin />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/tutorial" element={<Tutorial />} />
+        <Route path="/landing" element={<Landing />} />
 
         {/* Redirecionamentos de rotas antigas */}
         <Route path="/login" element={<Navigate to="/dashboard" replace />} />

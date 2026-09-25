@@ -2,6 +2,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'fs';
+import { resolve } from 'path';
 
 const pkg = JSON.parse(readFileSync('./package.json', 'utf-8'));
 
@@ -22,6 +23,10 @@ export default defineConfig({
     sourcemap: false, // Desativa sourcemaps em produção para segurança
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
+      input: {
+        main: resolve(__dirname, 'index.html'),
+        app: resolve(__dirname, 'app.html')
+      },
       output: {
         // Hash garante cache-busting sem precisar do Date.now()
         entryFileNames: `assets/[name]-[hash].js`,

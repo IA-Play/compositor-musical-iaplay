@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Navbar } from '../components/Navbar';
-import { Project, AIProvider, MusicType, AudioQuality, DetailedInstruction } from '../types';
+import { Project, AIProvider, MusicType, MusicPlatform, AudioQuality, DetailedInstruction, YuETrack } from '../types';
 import { ArsenalModal } from '../components/Arsenal';
+import { YuEGenerationModal } from '../components/YuEGenerationModal';
+import { checkMaestroStatus } from '../services/maestroService';
 import {
     generateLyrics,
     optimizeLyrics,
@@ -10,13 +12,16 @@ import {
     generateStyleTags,
     generateByArtistFlow,
     analyzeArtistDNA,
-    fetchArtistSongs
+    fetchArtistSongs,
+    hasKeyForProvider,
+    getProviderKeyUrl,
+    parseStructuredPrompt
 } from '../services/aiService';
 import {
     ArrowLeft, Save, Copy, Loader2,
     Sliders, Check, Cpu, FileText,
     Mic2, X, Share2, Database, LayoutTemplate, MoreHorizontal, FileAudio, Wand2,
-    Upload, Download, HelpCircle, RefreshCw
+    Upload, Download, HelpCircle, RefreshCw, Key, ExternalLink, AlertCircle, Music, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,7 +35,7 @@ import { useAIStream } from '../services/useAIStream';
 
 interface EditorProps {
     project: Project;
-    setProject: (p: Project) => void;
+    setProject: (p: Project | ((prev: Project) => Project)) => void;
     onSave: () => void;
     saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
 }
@@ -54,8 +59,53 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
     const [showTour, setShowTour] = useState(false);
 
     // Feature States
-    const [aiProvider, setAiProvider] = useState<AIProvider>(AIProvider.GOOGLE);
+    const [aiProvider, setAiProvider] = useState<AIProvider>(() => {
+        const saved = localStorage.getItem('iaplay_preferred_provider');
+        if (saved && Object.values(AIProvider).includes(saved as AIProvider)) {
+            return saved as AIProvider;
+        }
+        if (hasKeyForProvider(AIProvider.GOOGLE)) return AIProvider.GOOGLE;
+        if (hasKeyForProvider(AIProvider.GROQ)) return AIProvider.GROQ;
+        if (hasKeyForProvider(AIProvider.OPENROUTER)) return AIProvider.OPENROUTER;
+        return AIProvider.GOOGLE;
+    });
     const [generatedPrompt, setGeneratedPrompt] = useState("");
+    const [quickApiKey, setQuickApiKey] = useState("");
+    const [quickKeySaved, setQuickKeySaved] = useState(false);
+    const [showYuEModal, setShowYuEModal] = useState(false);
+    const [maestroOnline, setMaestroOnline] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        checkMaestroStatus().then(res => setMaestroOnline(res.online)).catch(() => setMaestroOnline(false));
+    }, []);
+
+    const handleSelectProvider = (p: AIProvider) => {
+        setAiProvider(p);
+        localStorage.setItem('iaplay_preferred_provider', p);
+        setQuickApiKey("");
+        setQuickKeySaved(false);
+    };
+
+    const handleSaveQuickKey = () => {
+        const key = quickApiKey.trim();
+        if (!key) return;
+        const keyMap: Record<string, string> = {
+            [AIProvider.GOOGLE]: 'google',
+            [AIProvider.GROQ]: 'groq',
+            [AIProvider.OPENROUTER]: 'openrouter',
+            [AIProvider.CEREBRAS]: 'cerebras',
+            [AIProvider.OPENAI]: 'openai',
+            [AIProvider.MISTRAL]: 'mistral',
+            [AIProvider.TOGETHER]: 'together',
+        };
+        const field = keyMap[aiProvider];
+        if (field) {
+            updateApiKeys({ [field]: key } as any);
+            setQuickKeySaved(true);
+            setQuickApiKey("");
+            setTimeout(() => setQuickKeySaved(false), 3000);
+        }
+    };
 
     // Ollama Dynamic Detection
     const [ollamaModels, setOllamaModels] = useState<OllamaModelInfo[]>([]);
@@ -177,7 +227,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
         title: string;
         placeholder?: string;
         value: string;
-        type: 'prompt' | 'alert' | 'select';
+        type: 'prompt' | 'alert' | 'select' | 'key_missing';
         options?: string[];
         onConfirm: (val: string) => void;
     }>({ isOpen: false, title: '', value: '', type: 'alert', options: [], onConfirm: () => { } });
@@ -238,7 +288,19 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
             await task();
         } catch (e: any) {
             console.error(e);
-            showAlert(e.message || t('messages.generic_error'));
+            const errStr = e.message || t('messages.generic_error');
+            if (errStr.includes("Nenhuma chave") || errStr.includes("API key") || errStr.includes("chave do Google") || errStr.includes("chave da Groq") || errStr.includes("chave do OpenRouter") || errStr.includes("chave da Cerebras")) {
+                setModalConfig({
+                    isOpen: true,
+                    title: errStr,
+                    value: '',
+                    type: 'key_missing',
+                    options: [],
+                    onConfirm: () => setModalConfig(prev => ({ ...prev, isOpen: false }))
+                });
+            } else {
+                showAlert(errStr);
+            }
         } finally {
             setIsLoading(false);
             setLoadingMessage("");
@@ -264,10 +326,16 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
         }
     };
 
+    const insertTag = (tag: string) => {
+        const textToInsert = (project.lyrics && !project.lyrics.endsWith('\n') ? '\n' : '') + `${tag}\n`;
+        const updated = (project.lyrics || '') + textToInsert;
+        setProject({ ...project, lyrics: updated });
+    };
+
     // AI Actions
     const handleGenerateLyrics = async () => {
         const theme = await showPrompt(
-            t('editor.prompt_theme') || "Sobre o que será a música?",
+            t('editor.prompt_theme') || "Sobre o que sera a musica?",
             t('editor.prompt_theme_ex') || "Ex: Um guerreiro enfrentando seus medos..."
         );
         if (!theme) return;
@@ -280,9 +348,10 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                 user?.creativeContext
             );
             if (!result || result.trim().length < 10) {
-                throw new Error("A IA retornou uma resposta vazia. Verifique suas chaves de API ou conexão com o Ollama.");
+                throw new Error("A IA retornou uma resposta vazia. Verifique suas chaves de API ou conexao com o Ollama.");
             }
-            setProject({ ...project, lyrics: result });
+            // Salva a versao anterior no historico (Melhoria 5)
+            pushToHistory('lyrics', result, 'Gerada: ' + new Date().toLocaleTimeString());
         });
     };
 
@@ -297,30 +366,170 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
         await runWithFailover(t('messages.prompt_engineering'), async () => {
             const result = await structureSunoPrompt(project, aiProvider);
             setGeneratedPrompt(result);
-            setProject({ ...project, promptFinal: result });
+
+            // Parsing inteligente do resultado estruturado (letra e estilo)
+            const parsed = parseStructuredPrompt(result);
+            const targetPlatformName = project.targetPlatform || 'Suno';
+            const timestamp = new Date().toLocaleTimeString();
+
+            setProject(prev => {
+                // Guarda versão anterior do prompt estruturado no histórico
+                const pHistory = [...(prev.promptHistory || [])];
+                if (prev.promptFinal && prev.promptFinal.trim()) {
+                    pHistory.unshift({
+                        label: `${targetPlatformName} · ${timestamp}`,
+                        value: prev.promptFinal,
+                        at: new Date().toISOString()
+                    });
+                    if (pHistory.length > 20) pHistory.length = 20;
+                }
+
+                // Guarda versão anterior da letra no histórico antes de aplicar a estruturada
+                const lHistory = [...(prev.lyricsHistory || [])];
+                const hasNewStructuredLyrics = Boolean(parsed.lyricsText && parsed.lyricsText.length > 10);
+                if (hasNewStructuredLyrics && prev.lyrics && prev.lyrics.trim()) {
+                    lHistory.unshift({
+                        label: `Original pré-estrutura · ${timestamp}`,
+                        value: prev.lyrics,
+                        at: new Date().toISOString()
+                    });
+                    if (lHistory.length > 20) lHistory.length = 20;
+                }
+
+                const updatedExtracted = parsed.tags.length > 0
+                    ? parsed.tags
+                    : prev.extractedStyles;
+
+                return {
+                    ...prev,
+                    promptFinal: result,
+                    promptHistory: pHistory,
+                    lyrics: hasNewStructuredLyrics ? parsed.lyricsText : prev.lyrics,
+                    lyricsHistory: lHistory,
+                    stylePrompt: parsed.styleText || prev.stylePrompt,
+                    extractedStyles: updatedExtracted
+                };
+            });
         });
     };
 
+    // --- MELHORIA 5: Historico de prompts e letras (restaurar versoes) ---
+    const pushToHistory = (
+        field: 'promptFinal' | 'lyrics',
+        newValue: string,
+        label: string
+    ) => {
+        const key = field === 'promptFinal' ? 'promptHistory' : 'lyricsHistory';
+        const history = [...(project[key] || [])];
+        const current = project[field];
+        if (current && current.trim()) {
+            history.unshift({
+                label: label,
+                value: current,
+                at: new Date().toISOString()
+            });
+            // Mantem apenas as 20 ultimas versoes
+            if (history.length > 20) history.length = 20;
+        }
+        setProject({
+            ...project,
+            [field]: newValue,
+            [key]: history
+        } as any);
+    };
+
+    const restoreFromHistory = (field: 'promptFinal' | 'lyrics', index: number) => {
+        const key = field === 'promptFinal' ? 'promptHistory' : 'lyricsHistory';
+        const history = project[key] || [];
+        if (index >= 0 && index < history.length) {
+            setProject({
+                ...project,
+                [field]: history[index].value
+            } as any);
+        }
+    };
+
+    const handleTrackSaved = (newTrack: YuETrack) => {
+        const existing = project.tracks || [];
+        setProject({
+            ...project,
+            tracks: [newTrack, ...existing]
+        });
+    };
+
+    // --- MELHORIA 4: Presets de arsenal (salvar/carregar/reutilizar) ---
+    const [showPresets, setShowPresets] = useState(false);
+    const [presetName, setPresetName] = useState('');
+    const PRESETS_KEY = 'iaplay_arsenal_presets';
+
+    const loadPresets = (): { name: string; arsenal: any }[] => {
+        try {
+            const stored = localStorage.getItem(PRESETS_KEY);
+            return stored ? JSON.parse(stored) : [];
+        } catch (e) { return []; }
+    };
+
+    const savePreset = () => {
+        const name = presetName.trim() || ('Preset ' + new Date().toLocaleTimeString());
+        const presets = loadPresets();
+        const idx = presets.findIndex(p => p.name === name);
+        const newPreset = { name, arsenal: { ...project.arsenal } };
+        if (idx >= 0) presets[idx] = newPreset;
+        else presets.push(newPreset);
+        localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+        setPresetName('');
+        showAlert('Preset "' + name + '" salvo com sucesso!');
+    };
+
+    const applyPreset = (name: string) => {
+        const presets = loadPresets();
+        const p = presets.find(x => x.name === name);
+        if (p) {
+            setProject({ ...project, arsenal: { ...p.arsenal } });
+            showAlert('Preset "' + name + '" aplicado!');
+        }
+    };
+
+    const deletePreset = (name: string) => {
+        const presets = loadPresets().filter(p => p.name !== name);
+        localStorage.setItem(PRESETS_KEY, JSON.stringify(presets));
+        showAlert('Preset "' + name + '" removido.');
+    };
+
+    // --- Selecionar plataforma (Melhoria 3) ---
+    const changePlatform = (platform: MusicPlatform) => {
+        setProject({ ...project, targetPlatform: platform });
+    };
+
+
+
     const handleExtractTags = async () => {
-        if (!project.lyrics) return;
-        await runWithFailover(t('messages.extracting_tags'), async () => {
-            // Passa a letra e o que o usuário preencheu no "Engenharia de Som" (project.styles e project.arsenal)
+        // Prioridade máxima: Usar o prompt estruturado completo (project.promptFinal) se disponível
+        const hasStructuredPrompt = project.promptFinal && project.promptFinal.trim().length > 20;
+        
+        let fullPromptContext = "";
+        if (hasStructuredPrompt) {
+            fullPromptContext = project.promptFinal.trim();
+        } else if (project.lyrics && project.lyrics.trim().length > 0) {
             const userStyles = project.styles || [];
             const arsenalInstruments = project.arsenal?.instruments || [];
-            const context = `Letra: \n${project.lyrics}\n\nEstilos OBRIGATÓRIOS definidos pelo usuário (DEVEM aparecer nas tags): ${userStyles.join(', ')}.\nInstrumentos selecionados: ${arsenalInstruments.join(', ')}.\nArsenal completo: ${JSON.stringify(project.arsenal)}`;
-            const tags = await generateStyleTags(context, aiProvider);
-            const aiTags = tags.split(',').map(s => s.trim()).filter(s => s.length > 0);
+            fullPromptContext = `Title: ${project.title || "Untitled"}\nStyle: ${userStyles.join(', ')}\nAtmosphere/Feeling: ${project.sentiment || "Neutral"}\nInstruments/Arsenal: ${arsenalInstruments.join(', ')}\n\n[LYRICS]\n${project.lyrics}`;
+        } else {
+            return;
+        }
 
-            // MERGE FORÇADO: Estilos do compositor sempre presentes + tags da IA sem duplicatas
-            const userStylesLower = userStyles.map(s => s.toLowerCase());
-            const filteredAiTags = aiTags.filter(tag => {
-                const tagLower = tag.toLowerCase();
-                // Remove tags da IA que sejam idênticas ou muito similares aos estilos do usuário
-                return !userStylesLower.some(us => us === tagLower || tagLower.includes(us) || us.includes(tagLower));
-            });
-
-            const mergedTags = [...userStyles, ...filteredAiTags];
-            setProject({ ...project, extractedStyles: mergedTags });
+        await runWithFailover(t('messages.extracting_tags') || "Sintetizando Style Description...", async () => {
+            const styleDesc = await generateStyleTags(fullPromptContext, aiProvider);
+            if (!styleDesc || styleDesc.trim().length === 0) {
+                throw new Error("A IA retornou uma resposta vazia. Verifique se o modelo de IA está ativo e respondendo.");
+            }
+            const cleanDesc = styleDesc.trim();
+            console.log("[Editor] Style Description sintetizado com sucesso:", cleanDesc);
+            setProject(prev => ({
+                ...prev,
+                stylePrompt: cleanDesc,
+                extractedStyles: [cleanDesc]
+            }));
         });
     };
 
@@ -419,6 +628,9 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         <span className="text-[10px] font-bold text-zinc-500 uppercase">{t('editor.project_caps')}</span>
                         <span className="font-bold text-sm text-white truncate max-w-[200px]">{project.title}</span>
                     </div>
+                    <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
+                        {project.targetPlatform || MusicPlatform.SUNO}
+                    </span>
                 </div>
 
                 <div className="flex items-center gap-3">
@@ -474,23 +686,80 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
                         {/* AI Engine */}
                         <section className="space-y-3">
-                            <div className="flex items-center gap-2 text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
-                                <Cpu className="w-3 h-3" /> {t('editor.engine')}
+                            <div className="flex items-center justify-between text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                                <span className="flex items-center gap-1.5"><Cpu className="w-3 h-3 text-primary" /> {t('editor.engine')}</span>
+                                {aiProvider !== AIProvider.OLLAMA && hasKeyForProvider(aiProvider) && (
+                                    <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                                        <Check className="w-3 h-3" /> Chave Ativa
+                                    </span>
+                                )}
                             </div>
                             <select
                                 value={aiProvider}
-                                onChange={(e) => setAiProvider(e.target.value as AIProvider)}
+                                onChange={(e) => handleSelectProvider(e.target.value as AIProvider)}
                                 className="w-full bg-zinc-900 border border-white/10 rounded-lg p-2.5 text-xs text-white focus:border-primary outline-none"
                             >
-                                <option value={AIProvider.GOOGLE}>Google Gemini (Recomendado)</option>
-                                <option value={AIProvider.OLLAMA}>🦙 Ollama (Local / Pinokio)</option>
-                                <option value={AIProvider.GROQ}>⚡ Groq (Llama 3.3 Ultra-Rápido)</option>
-                                <option value={AIProvider.CEREBRAS}>🚀 Cerebras Cloud (Grátis)</option>
-                                <option value={AIProvider.OPENROUTER}>🌐 OpenRouter (Modelos Grátis)</option>
-                                <option value={AIProvider.MISTRAL}>🇫🇷 Mistral AI</option>
-                                <option value={AIProvider.TOGETHER}>Together AI</option>
-                                <option value={AIProvider.OPENAI}>OpenAI (GPT-4o)</option>
+                                <option value={AIProvider.GOOGLE}>Google Gemini {hasKeyForProvider(AIProvider.GOOGLE) ? '✅' : '🔑'}</option>
+                                <option value={AIProvider.OLLAMA}>🦙 Ollama Local {isOllamaOnline ? '✅' : '(Offline ❌)'}</option>
+                                <option value={AIProvider.GROQ}>⚡ Groq (Llama 3.3) {hasKeyForProvider(AIProvider.GROQ) ? '✅' : '(Grátis 🔑)'}</option>
+                                <option value={AIProvider.CEREBRAS}>🚀 Cerebras Cloud {hasKeyForProvider(AIProvider.CEREBRAS) ? '✅' : '(Grátis 🔑)'}</option>
+                                <option value={AIProvider.OPENROUTER}>🌐 OpenRouter {hasKeyForProvider(AIProvider.OPENROUTER) ? '✅' : '(Grátis 🔑)'}</option>
+                                <option value={AIProvider.MISTRAL}>🇫🇷 Mistral AI {hasKeyForProvider(AIProvider.MISTRAL) ? '✅' : '🔑'}</option>
+                                <option value={AIProvider.TOGETHER}>Together AI {hasKeyForProvider(AIProvider.TOGETHER) ? '✅' : '🔑'}</option>
+                                <option value={AIProvider.OPENAI}>OpenAI (GPT-4o) {hasKeyForProvider(AIProvider.OPENAI) ? '✅' : '🔑'}</option>
                             </select>
+
+                            {/* INLINE QUICK API KEY SETUP */}
+                            {aiProvider !== AIProvider.OLLAMA && !hasKeyForProvider(aiProvider) && (
+                                <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-2 animate-in fade-in">
+                                    <div className="flex items-center justify-between text-[11px] font-bold text-amber-400">
+                                        <span className="flex items-center gap-1.5">
+                                            <Key className="w-3.5 h-3.5" />
+                                            Chave necessária
+                                        </span>
+                                        <a
+                                            href={getProviderKeyUrl(aiProvider)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-primary hover:underline flex items-center gap-1 text-[10px]"
+                                        >
+                                            Pegar Chave Grátis <ExternalLink className="w-2.5 h-2.5" />
+                                        </a>
+                                    </div>
+                                    <div className="flex gap-1.5">
+                                        <input
+                                            type="password"
+                                            value={quickApiKey}
+                                            onChange={(e) => setQuickApiKey(e.target.value)}
+                                            onKeyDown={(e) => e.key === 'Enter' && handleSaveQuickKey()}
+                                            placeholder="Cole sua API Key aqui..."
+                                            className="flex-1 bg-black border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-primary outline-none"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleSaveQuickKey}
+                                            className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-[#e05626] transition-colors"
+                                        >
+                                            Salvar
+                                        </button>
+                                    </div>
+                                    {quickKeySaved && (
+                                        <p className="text-[10px] text-emerald-400 font-bold animate-in fade-in">
+                                            ✅ Chave salva e ativada com sucesso!
+                                        </p>
+                                    )}
+                                    <div className="flex items-center justify-between text-[10px] pt-0.5 text-zinc-400">
+                                        <span>Ou use IA local:</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSelectProvider(AIProvider.OLLAMA)}
+                                            className="text-emerald-400 hover:underline font-bold"
+                                        >
+                                            🦙 Alternar para Ollama
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
 
                             {/* OLLAMA LOCAL DYNAMIC MODEL PICKER */}
                             {aiProvider === AIProvider.OLLAMA && (
@@ -661,20 +930,61 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                 </div>
 
                 {/* 2. CENTER - EDITOR (Fluid) */}
-                <div className={`${activeTab === 'lyrics' ? 'flex' : 'hidden'} md:flex flex-1 bg-[#050505] p-4 md:p-10 flex flex-col relative overflow-hidden`}>
+                <div className={`${activeTab === 'lyrics' ? 'flex' : 'hidden'} md:flex flex-1 bg-[#050505] p-4 md:p-8 flex flex-col relative overflow-hidden`}>
                     <div className="max-w-3xl w-full mx-auto flex-1 flex flex-col h-full">
 
                         {/* Editor Header (Mac Style) */}
                         <div className="bg-zinc-900 rounded-t-xl border border-white/10 p-3 flex items-center justify-between select-none">
-                            <div className="flex gap-1.5 ml-2">
+                            <div className="flex gap-1.5 ml-2 items-center">
                                 <div className="w-2.5 h-2.5 rounded-full bg-red-500/20 hover:bg-red-500 transition-colors" />
                                 <div className="w-2.5 h-2.5 rounded-full bg-yellow-500/20 hover:bg-yellow-500 transition-colors" />
                                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/20 hover:bg-green-500 transition-colors" />
+                                <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-3">{t('editor.composition_editor')}</span>
                             </div>
-                            <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">{t('editor.composition_editor')}</span>
-                            <button onClick={() => copyToClipboard(project.lyrics)} className="mr-2 text-zinc-500 hover:text-white transition-colors" title="Copiar">
-                                <Copy className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {project.lyricsHistory && project.lyricsHistory.length > 0 && (
+                                    <select
+                                        onChange={(e) => { if (e.target.value !== '') restoreFromHistory('lyrics', parseInt(e.target.value)); e.target.value = ''; }}
+                                        defaultValue=""
+                                        className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-zinc-300 outline-none hover:border-white/30"
+                                        title="Histórico de versões da letra"
+                                    >
+                                        <option value="" disabled>Histórico de Letras ({project.lyricsHistory.length})</option>
+                                        {project.lyricsHistory.map((h, i) => (
+                                            <option key={i} value={i}>{h.label}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <button onClick={() => copyToClipboard(project.lyrics)} className="mr-2 text-zinc-500 hover:text-white transition-colors" title="Copiar Letra">
+                                    <Copy className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Quick Metatag Toolbar */}
+                        <div className="bg-zinc-900/90 border-x border-b border-white/5 px-3 py-1.5 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[9px] font-bold text-zinc-500 uppercase mr-1">Metatags:</span>
+                            {[
+                                '[Intro]',
+                                '[Verse 1]',
+                                '[Verse 2]',
+                                '[Pre-Chorus]',
+                                '[Chorus]',
+                                '[Bridge]',
+                                '[Drop]',
+                                '[Guitar Solo]',
+                                '[Outro]',
+                                '[End]'
+                            ].map(tag => (
+                                <button
+                                    key={tag}
+                                    type="button"
+                                    onClick={() => insertTag(tag)}
+                                    className="px-2 py-0.5 bg-black/50 hover:bg-primary/20 border border-white/10 hover:border-primary/40 rounded text-[10px] font-mono text-zinc-300 hover:text-white transition-colors"
+                                >
+                                    {tag}
+                                </button>
+                            ))}
                         </div>
 
                         {/* Text Area */}
@@ -694,45 +1004,179 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                 </div>
 
                 {/* 3. RIGHT SIDEBAR - PROMPT & OUTPUT (320px) */}
-                <div className={`${activeTab === 'output' ? 'flex' : 'hidden'} md:flex w-full md:w-[320px] border-l border-white/10 bg-zinc-900 overflow-y-auto custom-scrollbar flex flex-col p-5 gap-6`}>
+                <div className={`${activeTab === 'output' ? 'flex' : 'hidden'} md:flex w-full md:w-[320px] border-l border-white/10 bg-zinc-900 overflow-y-auto custom-scrollbar flex-col p-5 gap-5 shrink-0`}>
 
+                    {/* Selecao de plataforma (Suno/Udio/Mureka/Maestro) */}
+                    <div>
+                        <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Plataforma de Destino</label>
+                        <div className="grid grid-cols-2 gap-1.5">
+                            {[
+                                { id: MusicPlatform.SUNO, label: 'Suno.ai' },
+                                { id: MusicPlatform.UDIO, label: 'Udio' },
+                                { id: MusicPlatform.MUREKA, label: 'Mureka' },
+                                { id: MusicPlatform.MAESTRO, label: 'Maestro (YuE2)' }
+                            ].map(p => (
+                                <button
+                                    key={p.id}
+                                    type="button"
+                                    onClick={() => changePlatform(p.id as MusicPlatform)}
+                                    className={'py-2 px-1.5 rounded-lg text-[10px] font-bold transition-all border text-center truncate ' + (
+                                        project.targetPlatform === p.id
+                                            ? 'bg-primary text-white border-primary shadow-lg shadow-primary/30'
+                                            : 'bg-zinc-900 text-zinc-400 border-white/10 hover:border-white/30'
+                                    )}
+                                >
+                                    {p.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* BOTÃO PRINCIPAL DE ESTRUTURAÇÃO */}
                     <button
+                        type="button"
                         onClick={handleGenerateStructure}
-                        className="w-full py-4 bg-primary hover:bg-[#e05626] rounded-xl font-bold text-white shadow-lg shadow-primary/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl font-bold text-white shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-xs uppercase tracking-wider"
                     >
-                        <Cpu className="w-5 h-5" /> {t('editor.structure_final')}
+                        <Cpu className="w-4 h-4" /> {t('editor.structure_final') || 'Estruturar Prompt'}
                     </button>
 
                     {/* Prompt Output */}
-                    <div data-tour="structured-prompt" className="flex-1 flex flex-col min-h-[300px]">
+                    <div data-tour="structured-prompt" className="flex-1 flex flex-col min-h-[260px]">
                         <div className="flex justify-between items-center mb-2">
-                            <label className="text-[10px] font-bold text-green-400 uppercase">{t('editor.structured_prompt')}</label>
-                            <button onClick={() => copyToClipboard(project.promptFinal)} className="text-zinc-500 hover:text-white"><Copy className="w-3 h-3" /></button>
+                            <label className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
+                                {`Prompt Estruturado (${project.targetPlatform || 'Suno.ai'})`}
+                            </label>
+                            <div className="flex items-center gap-1.5">
+                                {project.promptHistory && project.promptHistory.length > 0 && (
+                                    <select
+                                        onChange={(e) => { if (e.target.value !== '') restoreFromHistory('promptFinal', parseInt(e.target.value)); e.target.value = ''; }}
+                                        defaultValue=""
+                                        className="bg-black/60 border border-white/10 rounded-lg px-2 py-0.5 text-[9px] text-zinc-400 outline-none max-w-[120px]"
+                                        title="Histórico de versões do prompt"
+                                    >
+                                        <option value="" disabled>Versões ({project.promptHistory.length})</option>
+                                        {project.promptHistory.map((h, i) => (
+                                            <option key={i} value={i}>{h.label}</option>
+                                        ))}
+                                    </select>
+                                )}
+                                <button onClick={() => copyToClipboard(project.promptFinal || generatedPrompt)} className="text-zinc-500 hover:text-white transition-colors" title="Copiar Prompt">
+                                    <Copy className="w-3.5 h-3.5" />
+                                </button>
+                            </div>
                         </div>
-                        <div className="flex-1 bg-black border border-white/10 rounded-xl p-4 relative group">
+                        <div className="flex-1 bg-black border border-white/10 rounded-xl p-3.5 relative group">
                             <textarea
                                 value={project.promptFinal || generatedPrompt}
                                 onChange={(e) => setProject({ ...project, promptFinal: e.target.value })}
                                 className="w-full h-full bg-transparent text-[11px] font-mono text-green-500/90 focus:outline-none resize-none custom-scrollbar leading-relaxed"
-                                placeholder="[PROMPT_GLOBAL: ...]&#10;O prompt estruturado aparecerá aqui."
+                                placeholder={
+                                    project.targetPlatform === MusicPlatform.UDIO
+                                        ? "[UDIO PROMPT TAGS]\nfemale vocalist, synthwave, 80s, punchy bass, analog synths, reverb, 120 bpm\n\n[CUSTOM LYRICS]\n[Verse]\n...\n[Chorus]\n..."
+                                        : project.targetPlatform === MusicPlatform.MUREKA
+                                            ? "[SONG DESCRIPTION & PROMPT]\nGenre: ... Mood: ... Instruments: ... Vocals: ...\n\n[LYRICS & STRUCTURE]\n[Verse 1]\n...\n[Chorus]\n..."
+                                            : project.targetPlatform === MusicPlatform.MAESTRO
+                                                ? "[MUSIC STYLE / ALT_PROMPT]\nAcoustic Pop, warm expressive vocal, 90 BPM...\n\n[LETRA ESTRUTURADA YUE2]\n[Verse 1]\n...\n[Chorus]\n..."
+                                                : "[STYLE OF MUSIC / PROMPT]\nacoustic folk, emotive male vocals, 110 bpm, guitar...\n\n[LETRA ESTRUTURADA]\n[Intro]\n[Verse 1]\n..."
+                                }
                             />
                         </div>
                     </div>
 
-                    {/* Style Tags Output */}
+                    {/* Style Description (Suno / Udio / YuE2) */}
                     <div>
                         <div className="flex justify-between items-center mb-2">
-                            <label className="text-[10px] font-bold text-zinc-500 uppercase">{t('editor.style_prompt')}</label>
-                            <button onClick={handleExtractTags} className="text-[9px] bg-zinc-800 px-2 py-1 rounded text-zinc-400 hover:text-white">{t('editor.gen_styles')}</button>
+                            <div className="flex items-center gap-2">
+                                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                                    Style Description (Suno / Udio / YuE2)
+                                </label>
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${
+                                    ((project.stylePrompt || (project.extractedStyles || []).join(', ')) || '').length > 979
+                                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                        : ((project.stylePrompt || (project.extractedStyles || []).join(', ')) || '').length >= 650
+                                            ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                            : 'bg-zinc-800 text-zinc-400'
+                                }`}>
+                                    {((project.stylePrompt || (project.extractedStyles || []).join(', ')) || '').length} / 979
+                                </span>
+                            </div>
+                            <button
+                                onClick={handleExtractTags}
+                                className="text-[10px] bg-primary/20 hover:bg-primary/30 border border-primary/40 px-2 py-0.5 rounded text-primary hover:text-white transition-colors flex items-center gap-1 font-bold"
+                            >
+                                <Sparkles className="w-3 h-3" />
+                                Sintetizar Style Description
+                            </button>
                         </div>
-                        <div className="bg-black border border-white/10 rounded-xl p-3 min-h-[80px] flex flex-wrap content-start gap-2">
-                            {(project.extractedStyles || []).length > 0 ? (project.extractedStyles || []).map((t, i) => (
-                                <span key={i} className="px-2 py-1 bg-zinc-900 text-primary border border-primary/20 rounded text-[10px] font-bold">{t}</span>
-                            )) : <span className="text-[10px] text-zinc-700 italic w-full text-center mt-4">{t('editor.no_tags')}</span>}
+                        <div className="relative">
+                            <textarea
+                                value={project.stylePrompt || (project.extractedStyles || []).join(', ')}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setProject({
+                                        ...project,
+                                        stylePrompt: val,
+                                        extractedStyles: [val]
+                                    });
+                                }}
+                                rows={3}
+                                className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-[11px] text-zinc-200 focus:outline-none focus:border-primary/50 resize-y custom-scrollbar leading-relaxed font-mono"
+                                placeholder="Style Description conciso em inglês gerado pelo Style Description Architect (máx 979 caracteres)..."
+                            />
                         </div>
-                        <button onClick={() => copyToClipboard((project.extractedStyles || []).join(', '))} className="w-full mt-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-[10px] font-bold text-zinc-400 hover:text-white transition-colors">
-                            Copiar Tags
+                        <div className="flex gap-2 mt-2">
+                            <button
+                                onClick={() => copyToClipboard(project.stylePrompt || (project.extractedStyles || []).join(', '))}
+                                className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-[10px] font-bold text-zinc-300 hover:text-white transition-colors flex items-center justify-center gap-1.5"
+                            >
+                                <Copy className="w-3 h-3" />
+                                Copiar Style Description
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* GERAR MÚSICA COM YUE2 (MAESTRO LOCAL) */}
+                    <div className="p-3.5 bg-gradient-to-br from-primary/15 via-orange-950/20 to-zinc-900 border border-primary/30 rounded-xl flex flex-col gap-2.5 shadow-lg shadow-primary/10">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <Music className="w-4 h-4 text-primary" />
+                                <span className="text-[11px] font-bold text-white uppercase tracking-wider">
+                                    YuE2 Neural (Local)
+                                </span>
+                            </div>
+                            <span className={`flex items-center gap-1 text-[9px] font-medium px-2 py-0.5 rounded-full border ${
+                                maestroOnline ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-zinc-800 text-zinc-500 border-white/5'
+                            }`}>
+                                <span className={`w-1.5 h-1.5 rounded-full ${maestroOnline ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                                {maestroOnline ? 'YuE2 Pronto' : 'YuE2 Offline'}
+                            </span>
+                        </div>
+
+                        <p className="text-[10px] text-zinc-400 leading-snug">
+                            Produza a faixa musical completa (Vocal + Instrumental em 48kHz) diretamente na sua GPU com o motor neural YuE2 do IAPLAY.
+                        </p>
+
+                        <button
+                            type="button"
+                            onClick={() => setShowYuEModal(true)}
+                            className="w-full py-2.5 bg-primary hover:bg-[#e05626] text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-primary/20 transition-all active:scale-[0.98]"
+                        >
+                            <Wand2 className="w-3.5 h-3.5" /> Gerar Música com YuE2
                         </button>
+
+                        {project.tracks && project.tracks.length > 0 && (
+                            <div className="text-[10px] text-zinc-400 pt-1.5 border-t border-white/5 flex items-center justify-between">
+                                <span>Faixas prontas: <strong className="text-white">{project.tracks.length}</strong></span>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowYuEModal(true)}
+                                    className="text-primary hover:underline text-[10px] font-medium"
+                                >
+                                    Ouvir no Player →
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     {/* Advanced Tools */}
@@ -749,12 +1193,36 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         />
                     </div>
 
-                    <button
-                        onClick={() => window.open('https://suno.com', '_blank')}
-                        className="w-full py-3.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5 mt-auto transition-colors"
-                    >
-                        <Share2 className="w-3 h-3" /> {t('editor.open_suno')}
-                    </button>
+                    {project.targetPlatform === MusicPlatform.MAESTRO ? (
+                        <button
+                            type="button"
+                            onClick={() => setShowYuEModal(true)}
+                            className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-primary/30 mt-auto transition-colors text-white shadow-lg shadow-primary/25"
+                        >
+                            <Music className="w-4 h-4 text-white" />
+                            Produzir Música no YuE2
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onClick={() => {
+                                const url = project.targetPlatform === MusicPlatform.UDIO 
+                                    ? 'https://udio.com' 
+                                    : project.targetPlatform === MusicPlatform.MUREKA 
+                                        ? 'https://mureka.ai' 
+                                        : 'https://suno.com';
+                                window.open(url, '_blank');
+                            }}
+                            className="w-full py-3.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5 mt-auto transition-colors text-zinc-200"
+                        >
+                            <Share2 className="w-3.5 h-3.5 text-primary" />
+                            {project.targetPlatform === MusicPlatform.UDIO 
+                                ? 'Abrir Udio' 
+                                : project.targetPlatform === MusicPlatform.MUREKA 
+                                    ? 'Abrir Mureka.ai' 
+                                    : 'Abrir Suno.ai'}
+                        </button>
+                    )}
                 </div>
 
                 {/* Mobile Navigation Tabs */}
@@ -808,52 +1276,108 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
             {/* CUSTOM MODAL SYSTEM (Prompt, Select & Alert) */}
             {modalConfig.isOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-                    <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl flex flex-col gap-4 animate-in zoom-in duration-300">
-                        <h2 className="text-sm font-bold text-white whitespace-pre-wrap leading-relaxed">{modalConfig.title}</h2>
-                        {modalConfig.type === 'prompt' && (
-                            <input
-                                autoFocus
-                                type="text"
-                                className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder-zinc-700 text-sm focus:outline-none focus:border-primary/50"
-                                placeholder={modalConfig.placeholder}
-                                value={modalConfig.value}
-                                onChange={(e) => setModalConfig({ ...modalConfig, value: e.target.value })}
-                                onKeyDown={(e) => e.key === 'Enter' && modalConfig.onConfirm(modalConfig.value)}
-                            />
-                        )}
-                        {modalConfig.type === 'select' && modalConfig.options && modalConfig.options.length > 0 && (
-                            <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
-                                {modalConfig.options.map((opt, idx) => (
+                    <div className="bg-[#09090b] border border-white/10 rounded-2xl p-6 w-full max-w-md shadow-2xl flex flex-col gap-4 animate-in zoom-in duration-300">
+                        {modalConfig.type === 'key_missing' ? (
+                            <div className="space-y-4">
+                                <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
+                                    <Key className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                                    <div className="text-xs text-zinc-300 space-y-1">
+                                        <p className="font-bold text-white text-sm">Chave de IA Não Configurada</p>
+                                        <p className="leading-relaxed text-zinc-300">{modalConfig.title}</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 pt-2">
                                     <button
-                                        key={idx}
-                                        onClick={() => setModalConfig({ ...modalConfig, value: opt })}
-                                        className={`w-full text-left p-3 rounded-xl border text-sm transition-colors ${modalConfig.value === opt ? 'bg-primary/20 border-primary/50 text-white' : 'bg-black border-white/5 text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}
+                                        type="button"
+                                        onClick={() => {
+                                            setModalConfig(prev => ({ ...prev, isOpen: false }));
+                                            navigate('/settings');
+                                        }}
+                                        className="w-full py-3 bg-primary text-white text-xs font-bold rounded-xl hover:bg-[#e05626] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                                     >
-                                        {opt}
+                                        <Key className="w-4 h-4" /> Ir para Configurações (Inserir Chave)
                                     </button>
-                                // Indentação e estilo corrigido
-                                ))}
+
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setModalConfig(prev => ({ ...prev, isOpen: false }));
+                                            handleSelectProvider(AIProvider.OLLAMA);
+                                        }}
+                                        className="w-full py-2.5 bg-zinc-900 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        🦙 Alternar para Ollama (Local / Sem Chave)
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => modalConfig.onConfirm('')}
+                                        className="w-full py-2 text-zinc-500 hover:text-zinc-300 text-xs transition-colors text-center"
+                                    >
+                                        Fechar
+                                    </button>
+                                </div>
                             </div>
+                        ) : (
+                            <>
+                                <h2 className="text-sm font-bold text-white whitespace-pre-wrap leading-relaxed">{modalConfig.title}</h2>
+                                {modalConfig.type === 'prompt' && (
+                                    <input
+                                        autoFocus
+                                        type="text"
+                                        className="w-full bg-black border border-white/10 rounded-xl p-3 text-white placeholder-zinc-700 text-sm focus:outline-none focus:border-primary/50"
+                                        placeholder={modalConfig.placeholder}
+                                        value={modalConfig.value}
+                                        onChange={(e) => setModalConfig({ ...modalConfig, value: e.target.value })}
+                                        onKeyDown={(e) => e.key === 'Enter' && modalConfig.onConfirm(modalConfig.value)}
+                                    />
+                                )}
+                                {modalConfig.type === 'select' && modalConfig.options && modalConfig.options.length > 0 && (
+                                    <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto">
+                                        {modalConfig.options.map((opt, idx) => (
+                                            <button
+                                                key={idx}
+                                                onClick={() => setModalConfig({ ...modalConfig, value: opt })}
+                                                className={`w-full text-left p-3 rounded-xl border text-sm transition-colors ${modalConfig.value === opt ? 'bg-primary/20 border-primary/50 text-white' : 'bg-black border-white/5 text-zinc-400 hover:bg-zinc-900 hover:text-white'}`}
+                                            >
+                                                {opt}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                                <div className="flex gap-2 justify-end mt-2">
+                                    {modalConfig.type !== 'alert' && (
+                                        <button
+                                            className="px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white bg-transparent transition-colors"
+                                            onClick={() => modalConfig.onConfirm('')}
+                                        >
+                                            Cancelar
+                                        </button>
+                                    )}
+                                    <button
+                                        className="px-5 py-2 min-w-[100px] rounded-lg text-xs font-bold text-white bg-primary hover:bg-[#e05626] shadow-lg shadow-primary/20 transition-all active:scale-95"
+                                        onClick={() => modalConfig.onConfirm(modalConfig.value)}
+                                    >
+                                        {modalConfig.type === 'prompt' ? 'Confirmar' : modalConfig.type === 'select' ? 'Escolher' : 'OK'}
+                                    </button>
+                                </div>
+                            </>
                         )}
-                        <div className="flex gap-2 justify-end mt-2">
-                            {modalConfig.type !== 'alert' && (
-                                <button
-                                    className="px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white bg-transparent transition-colors"
-                                    onClick={() => modalConfig.onConfirm('')}
-                                >
-                                    Cancelar
-                                </button>
-                            )}
-                            <button
-                                className="px-5 py-2 min-w-[100px] rounded-lg text-xs font-bold text-white bg-primary hover:bg-[#e05626] shadow-lg shadow-primary/20 transition-all active:scale-95"
-                                onClick={() => modalConfig.onConfirm(modalConfig.value)}
-                            >
-                                {modalConfig.type === 'prompt' ? 'Confirmar' : modalConfig.type === 'select' ? 'Escolher' : 'OK'}
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
+
+            <YuEGenerationModal
+                isOpen={showYuEModal}
+                onClose={() => setShowYuEModal(false)}
+                initialLyrics={project.lyrics}
+                initialStyle={(project.extractedStyles && project.extractedStyles.length > 0) ? project.extractedStyles.join(', ') : (project.stylePrompt || project.styles.join(', '))}
+                structuredPrompt={project.promptFinal || generatedPrompt}
+                projectTitle={project.title}
+                onTrackSaved={handleTrackSaved}
+                existingTracks={project.tracks || []}
+            />
 
             <GuidedTour
                 steps={tourSteps}
@@ -866,3 +1390,4 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
         </motion.div>
     );
 };
+

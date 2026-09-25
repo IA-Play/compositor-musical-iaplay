@@ -3,9 +3,10 @@ import React, { useState, useEffect } from 'react';
 import { Navbar } from '../components/Navbar';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
-import { User, Key, Save, Eye, EyeOff, ExternalLink, Shield } from 'lucide-react';
+import { User, Key, Save, Eye, EyeOff, ExternalLink, Shield, Music, Radio } from 'lucide-react';
 import { useModal } from '../components/ModalProvider';
 import { fetchInstalledOllamaModels, OllamaModelInfo, POPULAR_OLLAMA_MODELS } from '../services/ollamaService';
+import { checkMaestroStatus, detectMaestroEndpoint, saveMaestroEndpoint } from '../services/maestroService';
 
 export const Settings: React.FC = () => {
     const { user, updateProfile, updateApiKeys, refreshProfile } = useAuth();
@@ -30,8 +31,12 @@ export const Settings: React.FC = () => {
         mistral: user?.mistralApiKey || '',
         together: user?.togetherApiKey || '',
         ollamaUrl: user?.ollamaUrl || 'http://localhost:11434',
-        ollamaModel: user?.ollamaModel || 'llama3.2'
+        ollamaModel: user?.ollamaModel || 'llama3.2',
+        maestroUrl: user?.maestroUrl || 'http://127.0.0.1:42003'
     });
+
+    const [testingMaestro, setTestingMaestro] = useState(false);
+    const [maestroTestStatus, setMaestroTestStatus] = useState<string | null>(null);
 
     const [testingOllama, setTestingOllama] = useState(false);
     const [ollamaStatus, setOllamaStatus] = useState<string | null>(null);
@@ -66,11 +71,12 @@ export const Settings: React.FC = () => {
                 mistral: user.mistralApiKey || '',
                 together: user.togetherApiKey || '',
                 ollamaUrl: user.ollamaUrl || 'http://localhost:11434',
-                ollamaModel: user.ollamaModel || 'llama3.2'
+                ollamaModel: user.ollamaModel || 'llama3.2',
+                maestroUrl: user.maestroUrl || 'http://127.0.0.1:42003'
             });
             autoFetchOllama(user.ollamaUrl);
         }
-    }, [user?.id, user?.googleApiKey, user?.openaiApiKey, user?.groqApiKey, user?.cerebrasApiKey, user?.openrouterApiKey, user?.mistralApiKey, user?.togetherApiKey, user?.ollamaUrl, user?.ollamaModel]);
+    }, [user?.id, user?.googleApiKey, user?.openaiApiKey, user?.groqApiKey, user?.cerebrasApiKey, user?.openrouterApiKey, user?.mistralApiKey, user?.togetherApiKey, user?.ollamaUrl, user?.ollamaModel, user?.maestroUrl]);
 
     const handleSaveProfile = async () => {
         setIsSaving(true);
@@ -82,6 +88,43 @@ export const Settings: React.FC = () => {
             await showAlert("Erro ao atualizar perfil.");
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const handleTestMaestro = async () => {
+        setTestingMaestro(true);
+        setMaestroTestStatus(null);
+        try {
+            const st = await checkMaestroStatus(keys.maestroUrl);
+            if (st.online) {
+                setMaestroTestStatus(`✅ Conectado com sucesso ao Maestro em ${st.endpoint}! YuE2 pronto para gerar músicas.`);
+                saveMaestroEndpoint(st.endpoint);
+            } else {
+                setMaestroTestStatus(`❌ Não foi possível conectar ao Maestro em ${keys.maestroUrl}. Certifique-se de que o Maestro está aberto no Pinokio.`);
+            }
+        } catch (e: any) {
+            setMaestroTestStatus(`❌ Erro ao testar conexão: ${e.message}`);
+        } finally {
+            setTestingMaestro(false);
+        }
+    };
+
+    const handleAutoDetectMaestro = async () => {
+        setTestingMaestro(true);
+        setMaestroTestStatus(null);
+        try {
+            const res = await detectMaestroEndpoint();
+            if (res.ok) {
+                setKeys(k => ({ ...k, maestroUrl: res.endpoint }));
+                saveMaestroEndpoint(res.endpoint);
+                setMaestroTestStatus(`🎯 Maestro detectado e conectado em ${res.endpoint}!`);
+            } else {
+                setMaestroTestStatus(`⚠️ Nenhuma instância do Maestro encontrada nas portas locais comuns. Verifique se ele está iniciado no Pinokio.`);
+            }
+        } catch (e: any) {
+            setMaestroTestStatus(`❌ Erro na detecção: ${e.message}`);
+        } finally {
+            setTestingMaestro(false);
         }
     };
 
@@ -114,6 +157,7 @@ export const Settings: React.FC = () => {
     const handleSaveKeys = async () => {
         setIsSaving(true);
         try {
+            saveMaestroEndpoint(keys.maestroUrl);
             updateApiKeys({
                 google: keys.google,
                 openai: keys.openai,
@@ -123,7 +167,8 @@ export const Settings: React.FC = () => {
                 mistral: keys.mistral,
                 together: keys.together,
                 ollamaUrl: keys.ollamaUrl,
-                ollamaModel: keys.ollamaModel
+                ollamaModel: keys.ollamaModel,
+                maestroUrl: keys.maestroUrl
             });
             await showAlert("Configurações e Chaves de IA salvas com sucesso!");
         } catch (e) {
@@ -390,6 +435,66 @@ export const Settings: React.FC = () => {
                                         )}
                                         <p className="text-[10px] text-zinc-400">
                                             💡 Não requer chave de API nem internet! Executa direto no seu PC/Pinokio.
+                                        </p>
+                                    </div>
+
+                                    {/* Integração Maestro & YuE2 (Local / Pinokio) */}
+                                    <div className="p-4 bg-gradient-to-br from-primary/10 via-orange-950/20 to-zinc-900 border border-primary/30 rounded-2xl space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center text-primary">
+                                                    <Music className="w-4 h-4" />
+                                                </div>
+                                                <div>
+                                                    <span className="text-sm font-bold text-white block">Maestro · YuE2 (Geração de Áudio Local)</span>
+                                                    <span className="text-[10px] text-zinc-400">Síntese neural de voz e instrumentos em estéreo 48kHz (CC BY-NC 4.0)</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold">
+                                                Pinokio
+                                            </span>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">
+                                                URL do Servidor Maestro
+                                            </label>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={keys.maestroUrl}
+                                                    onChange={(e) => setKeys({ ...keys, maestroUrl: e.target.value })}
+                                                    placeholder="http://127.0.0.1:42003"
+                                                    className="flex-1 bg-black border border-white/10 rounded-xl p-2.5 text-xs text-white font-mono focus:border-primary outline-none"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    disabled={testingMaestro}
+                                                    onClick={handleTestMaestro}
+                                                    className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
+                                                >
+                                                    {testingMaestro ? 'Testando...' : 'Testar'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    disabled={testingMaestro}
+                                                    onClick={handleAutoDetectMaestro}
+                                                    className="px-3 py-2 bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
+                                                    title="Procurar em portas locais comuns"
+                                                >
+                                                    Auto-Detectar
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {maestroTestStatus && (
+                                            <div className="p-2.5 bg-black/60 rounded-xl border border-white/10 text-xs font-mono text-zinc-300 animate-in fade-in">
+                                                {maestroTestStatus}
+                                            </div>
+                                        )}
+
+                                        <p className="text-[10px] text-zinc-400 leading-relaxed">
+                                            💡 Integração com a pasta instalada no Pinokio: <code className="text-zinc-300 font-mono">H:\pinokio\api\Maestro.git</code>. Quando o Maestro estiver rodando, você pode gerar músicas completas com 1 clique direto no IAPLAY!
                                         </p>
                                     </div>
 

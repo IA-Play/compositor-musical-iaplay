@@ -1,15 +1,36 @@
-﻿{
+{
   "run": [
     {
       "method": "shell.run",
       "params": {
-        "message": "npm install"
+        "message": [
+          "npm install",
+          "npm run build"
+        ]
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": [
+          "uv pip install -r server/requirements.txt --index-strategy unsafe-best-match"
+        ]
+      }
+    },
+    {
+      "method": "script.start",
+      "params": {
+        "uri": "torch.js",
+        "params": {
+          "venv": "env"
+        }
       }
     },
     {
       "method": "notify",
       "params": {
-        "html": "Instalação do IAPLAY Studio concluída com sucesso! Clique em Iniciar."
+        "html": "Instalação do IAPLAY Studio concluída! Clique em 'Baixar Modelos YuE2' para baixar os pesos neurais ou em 'Iniciar IAPLAY'."
       }
     }
   ]

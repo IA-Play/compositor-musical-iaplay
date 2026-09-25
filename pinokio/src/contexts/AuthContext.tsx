@@ -21,6 +21,7 @@ export const DEFAULT_LOCAL_USER: User = {
     togetherApiKey: '',
     ollamaUrl: 'http://localhost:11434',
     ollamaModel: 'llama3.2',
+    maestroUrl: 'http://127.0.0.1:42003',
     creativeContext: ''
 };
 
@@ -33,7 +34,7 @@ interface AuthContextType {
     logout: () => void;
     startTrial: () => Promise<void>;
     upgradePlan: (plan: PlanTier, duration: 'monthly' | 'yearly', sessionId?: string) => Promise<void>;
-    updateApiKeys: (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string }) => void;
+    updateApiKeys: (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string; maestroUrl?: string }) => void;
     updateProfile: (data: { name?: string; password?: string, creativeContext?: string }) => Promise<void>;
     cancelSubscription: () => Promise<void>;
     refreshProfile: () => Promise<void>;
@@ -70,6 +71,7 @@ const rawDataToUser = (data: any): User => ({
     togetherApiKey: data.togetherApiKey || data.together_api_key || '',
     ollamaUrl: data.ollamaUrl || data.ollama_url || 'http://localhost:11434',
     ollamaModel: data.ollamaModel || data.ollama_model || 'llama3.2',
+    maestroUrl: data.maestroUrl || data.maestro_url || 'http://127.0.0.1:42003',
     creativeContext: data.creativeContext || data.creative_context || '',
     stripePriceId: ''
 });
@@ -205,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const updateApiKeys = (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string }) => {
+    const updateApiKeys = (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string; maestroUrl?: string }) => {
         const currentUser = user || DEFAULT_LOCAL_USER;
         const updatedUser = { ...currentUser };
         if (keys.google !== undefined) updatedUser.googleApiKey = keys.google;
@@ -217,6 +219,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (keys.together !== undefined) updatedUser.togetherApiKey = keys.together;
         if (keys.ollamaUrl !== undefined) updatedUser.ollamaUrl = keys.ollamaUrl;
         if (keys.ollamaModel !== undefined) updatedUser.ollamaModel = keys.ollamaModel;
+        if (keys.maestroUrl !== undefined) updatedUser.maestroUrl = keys.maestroUrl;
         saveSession(updatedUser);
 
         // Atualiza também o cache de configurações do sistema para redundância

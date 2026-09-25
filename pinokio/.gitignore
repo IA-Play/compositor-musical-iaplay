@@ -1,29 +1,60 @@
-# Node
-node_modules
+# Logs
+logs/
+*.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# Build
-dist
+# Node dependencies and build
+node_modules/
+dist/
+dist-ssr/
 *.local
 
-# Environment
-.env
-.env.local
-.env.php
-
-# Logs
-logs
-*.log
-
-# Editor
-.vscode
-.idea
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
 .DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
 
-# Pinokio
-cache
-premium_uploads
+# Environment variables
+.env
+.env.php
+.env.local
+.env.*.local
 
-# OS
-Thumbs.db
-desktop.ini
+# Cache and python bytecode
+cache/
+*.zip
+__pycache__/
+**/__pycache__/
+*.pyc
+
+# Heavy AI weights, checkpoints, virtual environments, uploads and generated media
+env/
+ckpts/
+outputs/
+uploads/
+engine/ckpts
+engine/outputs
+pinokio/env/
+pinokio/ckpts
+pinokio/engine
+pinokio/outputs
+pinokio/uploads
+pinokio/logs/
+
+# Binary model weights
+*.safetensors
+*.onnx
+*.pkl
+*.bin
+*.pt
+*.pth

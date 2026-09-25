@@ -3,13 +3,26 @@
     {
       "method": "shell.run",
       "params": {
-        "message": "npm ci"
+        "message": [
+          "git pull",
+          "npm install",
+          "npm run build"
+        ]
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": [
+          "uv pip install -r server/requirements.txt --index-strategy unsafe-best-match"
+        ]
       }
     },
     {
       "method": "notify",
       "params": {
-        "html": "IAPLAY Studio atualizado! Clique em Iniciar para usar a nova versão."
+        "html": "IAPLAY Studio atualizado com sucesso!"
       }
     }
   ]

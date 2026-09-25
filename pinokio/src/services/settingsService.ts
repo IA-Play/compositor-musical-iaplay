@@ -19,13 +19,17 @@ const loadLocalSettings = (): SystemSettings => {
                 listInstruments: parsed.listInstruments || DEFAULT_SETTINGS.listInstruments,
                 listSentiments: parsed.listSentiments || DEFAULT_SETTINGS.listSentiments,
                 listStyles: parsed.listStyles || DEFAULT_SETTINGS.listStyles,
-                promptLyrics: parsed.promptLyrics || DEFAULT_SETTINGS.promptLyrics,
+                promptLyrics: (parsed.promptLyrics && parsed.promptLyrics.includes("CHAOS THEORY")) 
+                    ? parsed.promptLyrics 
+                    : DEFAULT_SETTINGS.promptLyrics,
                 promptInstrumental: parsed.promptInstrumental || DEFAULT_SETTINGS.promptInstrumental,
                 promptOptimize: parsed.promptOptimize || DEFAULT_SETTINGS.promptOptimize,
                 promptStructure: parsed.promptStructure || DEFAULT_SETTINGS.promptStructure,
                 promptRemix: parsed.promptRemix || DEFAULT_SETTINGS.promptRemix,
                 promptLength: parsed.promptLength || DEFAULT_SETTINGS.promptLength,
-                promptStyles: parsed.promptStyles || DEFAULT_SETTINGS.promptStyles,
+                promptStyles: (parsed.promptStyles && parsed.promptStyles.includes("STYLE DESCRIPTION ARCHITECT")) 
+                    ? parsed.promptStyles 
+                    : DEFAULT_SETTINGS.promptStyles,
                 promptAnalyze: parsed.promptAnalyze || DEFAULT_SETTINGS.promptAnalyze,
                 promptCompress: parsed.promptCompress || DEFAULT_SETTINGS.promptCompress,
                 promptForensic: parsed.promptForensic || DEFAULT_SETTINGS.promptForensic,

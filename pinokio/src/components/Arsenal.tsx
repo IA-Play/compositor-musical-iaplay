@@ -1,6 +1,5 @@
-
-import React, { useState } from 'react';
-import { X, Music, Radio, Activity, Cloud, Zap, ShieldAlert, CheckCircle2, Info, Sparkles, Plus, Power } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Music, Radio, Activity, Cloud, Zap, ShieldAlert, CheckCircle2, Info, Sparkles, Plus, Trash2, BookmarkCheck } from 'lucide-react';
 import { ArsenalSettings, AudioQuality } from '../types';
 import { getSystemSettings } from '../services/settingsService';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -49,6 +48,69 @@ export const ARSENAL_OPTIONS = {
   ] as ArsenalOption[]
 };
 
+const DEFAULT_PRESET_TEMPLATES = [
+  {
+    name: "🔥 Hit Trap & 808",
+    description: "808 pesado, autotune, hi-hats rápidos e ambiência escura",
+    arsenal: {
+      quality: AudioQuality.MASTERED,
+      mastering: ["Radio Ready", "Wide Stereo"],
+      rhythm: ["Syncopated", "Aggressive Drums"],
+      atmosphere: ["Dark"],
+      effects: ["Autotune", "Distortion"],
+      instruments: ["808 Bass", "Trap Hi-Hats", "Snare Roll", "Dark Synth"],
+      forceInstruments: false,
+      reverbLevel: 25,
+      isReverbActive: true
+    }
+  },
+  {
+    name: "📻 Pop Radio Ready",
+    description: "Mix polida e brilhante, bateria 4x4, sidechain e vocais destacados",
+    arsenal: {
+      quality: AudioQuality.MASTERED,
+      mastering: ["Radio Ready", "Wide Stereo", "Clean Mix"],
+      rhythm: ["Four-on-the-Floor"],
+      atmosphere: ["Dreamy"],
+      effects: ["Chorus", "Sidechain"],
+      instruments: ["Acoustic Drums", "Synth Bass", "Electric Piano", "Claps"],
+      forceInstruments: false,
+      reverbLevel: 35,
+      isReverbActive: true
+    }
+  },
+  {
+    name: "🎸 Acústico Intimista",
+    description: "Sonoridade quente e orgânica com violão e percussão suave",
+    arsenal: {
+      quality: AudioQuality.STUDIO,
+      mastering: ["Warm (Analog)", "Clean Mix"],
+      rhythm: ["Swing / Shuffle"],
+      atmosphere: ["Intimate / Dry"],
+      effects: [],
+      instruments: ["Violão de Aço", "Cajón", "Piano Acústico"],
+      forceInstruments: false,
+      reverbLevel: 15,
+      isReverbActive: false
+    }
+  },
+  {
+    name: "🎬 Épico Cinematográfico",
+    description: "Grandeza orquestral, reverbs de catedral e percussão épica",
+    arsenal: {
+      quality: AudioQuality.MASTERED,
+      mastering: ["Wide Stereo"],
+      rhythm: ["Double-Time", "Aggressive Drums"],
+      atmosphere: ["Cinematic", "Cathedral Reverb"],
+      effects: ["Delay"],
+      instruments: ["Orquestra Completa", "Tímpanos", "Cordas Épicas", "Metais"],
+      forceInstruments: false,
+      reverbLevel: 75,
+      isReverbActive: true
+    }
+  }
+];
+
 interface ArsenalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -58,17 +120,57 @@ interface ArsenalProps {
 
 export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings, onChange }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'master' | 'rhythm' | 'atmos' | 'inst' | 'fx'>('inst');
+  const [activeTab, setActiveTab] = useState<'master' | 'rhythm' | 'atmos' | 'inst' | 'fx' | 'presets'>('inst');
   const [hoveredDesc, setHoveredDesc] = useState<string | null>(null);
   const [instrumentInput, setInstrumentInput] = useState("");
+  const [presetName, setPresetName] = useState('');
+  const [presets, setPresets] = useState<{ name: string; arsenal: any }[]>([]);
+  const PRESETS_KEY = 'iaplay_arsenal_presets';
+
+  const loadPresets = () => {
+    try {
+      const stored = localStorage.getItem(PRESETS_KEY);
+      const parsed = stored ? JSON.parse(stored) : [];
+      setPresets(parsed);
+      return parsed;
+    } catch (e) { return []; }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      loadPresets();
+    }
+  }, [isOpen]);
+
+  const savePreset = () => {
+    const name = presetName.trim() || ('Preset ' + new Date().toLocaleTimeString());
+    const current = loadPresets();
+    const idx = current.findIndex(p => p.name === name);
+    const newPreset = { name, arsenal: { ...safeSettings } };
+    if (idx >= 0) current[idx] = newPreset;
+    else current.push(newPreset);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(current));
+    setPresets(current);
+    setPresetName('');
+  };
+
+  const applyPreset = (presetArsenal: any) => {
+    if (presetArsenal) {
+      onChange({ ...safeSettings, ...presetArsenal });
+    }
+  };
+
+  const deletePreset = (name: string) => {
+    const current = presets.filter(p => p.name !== name);
+    localStorage.setItem(PRESETS_KEY, JSON.stringify(current));
+    setPresets(current);
+  };
 
   const systemSettings = getSystemSettings();
   const instrumentsList = systemSettings.listInstruments || [];
 
-  // Early return AFTER hooks to respect React's Rules of Hooks
   if (!isOpen) return null;
 
-  // Defensive extraction to prevent crashes if settings are undefined/partially formed
   const safeSettings: ArsenalSettings = {
     quality: settings?.quality || AudioQuality.STUDIO,
     mastering: settings?.mastering || [],
@@ -104,8 +206,9 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
 
   const TabButton = ({ id, icon: Icon, label }: { id: any, icon: any, label: string }) => (
     <button
+      type="button"
       onClick={() => setActiveTab(id)}
-      className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+      className={`flex items-center gap-2 px-4 py-3 text-xs md:text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
         activeTab === id 
           ? 'border-primary text-primary' 
           : 'border-transparent text-zinc-400 hover:text-white'
@@ -121,7 +224,7 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
       <div className="relative w-full max-w-4xl bg-[#09090b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
         
         {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#09090b] shrink-0">
+        <div className="flex items-center justify-between p-5 border-b border-white/10 bg-[#09090b] shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg border border-primary/20">
               <Zap className="w-6 h-6 text-primary" />
@@ -131,18 +234,19 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
               <p className="text-xs text-zinc-400">{t('arsenal.subtitle')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-zinc-400 hover:text-white transition-colors bg-zinc-900 p-2 rounded-lg">
+          <button type="button" onClick={onClose} className="text-zinc-400 hover:text-white transition-colors bg-zinc-900 p-2 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Quality Selector (Always Visible) */}
-        <div className="p-4 bg-zinc-950 border-b border-white/5 flex gap-3 overflow-x-auto shrink-0 custom-scrollbar">
+        <div className="p-3 bg-zinc-950 border-b border-white/5 flex gap-2 overflow-x-auto shrink-0 custom-scrollbar">
             {Object.values(AudioQuality).map(q => (
                 <button
                     key={q}
+                    type="button"
                     onClick={() => onChange({ ...safeSettings, quality: q })}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all whitespace-nowrap ${
                         safeSettings.quality === q 
                         ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(139,92,246,0.15)]' 
                         : 'bg-zinc-900 border-white/10 text-zinc-500 hover:border-white/20 hover:text-zinc-300'
@@ -161,10 +265,11 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
             <TabButton id="rhythm" icon={Activity} label={t('arsenal.rhythm')} />
             <TabButton id="atmos" icon={Cloud} label={t('arsenal.atmosphere')} />
             <TabButton id="fx" icon={Zap} label={t('arsenal.effects')} />
+            <TabButton id="presets" icon={Sparkles} label="Presets Salvos" />
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-8 custom-scrollbar bg-[#050505] flex-1">
+        <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar bg-[#050505] flex-1">
           
           {activeTab === 'inst' && (
             <section className="animate-in fade-in slide-in-from-right-4 duration-300">
@@ -185,43 +290,46 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
                                 placeholder={t('arsenal.input_placeholder')}
                                 className="flex-1 md:w-64 bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary outline-none"
                             />
-                            <button onClick={addInstrument} className="p-2 bg-zinc-800 border border-white/10 rounded-lg text-white hover:bg-zinc-700"><Plus className="w-4 h-4"/></button>
+                            <button type="button" onClick={addInstrument} className="p-2 bg-primary text-white rounded-lg hover:bg-violet-600">
+                                <Plus className="w-5 h-5" />
+                            </button>
                          </div>
                     </div>
 
-                    {/* Active Tags */}
+                    {/* Selected Badges */}
                     {safeSettings.instruments.length > 0 && (
-                        <div className="flex flex-wrap gap-2 p-4 bg-zinc-900/30 rounded-xl border border-white/5 border-dashed min-h-[60px]">
+                        <div className="flex flex-wrap gap-2 p-4 bg-zinc-900/20 border border-white/5 rounded-xl">
                             {safeSettings.instruments.map(inst => (
-                                <span key={inst} className="px-3 py-1 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold flex items-center gap-2 animate-in zoom-in duration-200">
+                                <span key={inst} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/20 text-primary border border-primary/30">
                                     {inst}
-                                    <button onClick={() => removeInstrument(inst)} className="hover:text-white"><X className="w-3 h-3" /></button>
+                                    <button type="button" onClick={() => removeInstrument(inst)} className="hover:text-white"><X className="w-3.5 h-3.5" /></button>
                                 </span>
                             ))}
                         </div>
                     )}
 
-                    {/* Suggestions */}
+                    {/* Presets/List */}
                     <div>
-                        <h4 className="text-xs font-bold text-zinc-500 uppercase mb-3 flex items-center gap-2"><Sparkles className="w-3 h-3" /> {t('arsenal.suggestions')}</h4>
-                        <div className="flex flex-wrap gap-2">
-                            {instrumentsList.map(inst => {
-                                const isSelected = safeSettings.instruments.includes(inst);
-                                return (
-                                    <button
-                                        key={inst}
-                                        onClick={() => isSelected ? removeInstrument(inst) : onChange({ ...safeSettings, instruments: [...safeSettings.instruments, inst] })}
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all border ${
-                                            isSelected 
-                                            ? 'bg-zinc-900 border-zinc-700 text-zinc-600 line-through opacity-50 cursor-default' 
-                                            : 'bg-zinc-900 border-white/10 text-zinc-400 hover:bg-white/10 hover:text-white hover:border-white/30'
-                                        }`}
-                                    >
-                                        {inst}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                         <span className="text-xs text-zinc-500 font-bold uppercase tracking-wider block mb-3">{t('arsenal.popular_instruments')}</span>
+                         <div className="flex flex-wrap gap-2">
+                             {instrumentsList.map((inst: string) => {
+                                 const isSelected = safeSettings.instruments.includes(inst);
+                                 return (
+                                     <button
+                                         key={inst}
+                                         type="button"
+                                         onClick={() => isSelected ? removeInstrument(inst) : onChange({ ...safeSettings, instruments: [...safeSettings.instruments, inst] })}
+                                         className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                                             isSelected
+                                                 ? 'bg-primary border-primary text-white shadow-lg shadow-primary/20'
+                                                 : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/20 hover:text-white'
+                                         }`}
+                                     >
+                                         {inst}
+                                     </button>
+                                 );
+                             })}
+                         </div>
                     </div>
                 </div>
             </section>
@@ -229,7 +337,7 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
 
           {activeTab === 'master' && (
             <section className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.texture')}</h3>
+                <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.mastering')}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {ARSENAL_OPTIONS.mastering.map(opt => (
                     <ToggleBadge 
@@ -248,7 +356,7 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
 
           {activeTab === 'rhythm' && (
             <section className="animate-in fade-in slide-in-from-right-4 duration-300">
-                <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.groove')}</h3>
+                <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.rhythm')}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {ARSENAL_OPTIONS.rhythm.map(opt => (
                     <ToggleBadge 
@@ -266,50 +374,36 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
           )}
 
           {activeTab === 'atmos' && (
-            <section className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-8">
-                
-                {/* Reverb Controller */}
-                <div className="bg-zinc-900 border border-white/10 p-6 rounded-xl">
-                    <div className="flex justify-between items-center mb-6">
+            <section className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                {/* REVERB CONTROLLER */}
+                <div className="bg-zinc-900/50 p-4 rounded-xl border border-white/5 flex flex-col gap-4">
+                    <div className="flex justify-between items-center">
                         <div className="flex items-center gap-3">
-                            <div className="p-1.5 bg-zinc-800 rounded">
-                                <Cloud className="w-4 h-4 text-zinc-400" />
+                            <div className={`w-10 h-6 rounded-full p-1 cursor-pointer transition-colors ${safeSettings.isReverbActive ? 'bg-primary' : 'bg-zinc-700'}`} onClick={() => onChange({ ...safeSettings, isReverbActive: !safeSettings.isReverbActive })}>
+                                <div className={`w-4 h-4 bg-white rounded-full shadow-md transform transition-transform ${safeSettings.isReverbActive ? 'translate-x-4' : 'translate-x-0'}`} />
                             </div>
-                            <div>
-                                <label className="text-sm font-bold text-zinc-200 block">{t('arsenal.reverb')}</label>
-                                <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">{safeSettings.isReverbActive ? t('arsenal.active') : t('arsenal.off')}</span>
-                            </div>
+                            <label className="text-sm text-zinc-200 font-bold">{t('arsenal.reverb_active')}</label>
                         </div>
-                        <button 
-                            onClick={() => onChange({ ...safeSettings, isReverbActive: !safeSettings.isReverbActive })}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${safeSettings.isReverbActive ? 'bg-primary' : 'bg-zinc-700'}`}
-                        >
-                            <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${safeSettings.isReverbActive ? 'translate-x-6' : 'translate-x-1'}`} />
-                        </button>
+                        <span className="text-sm font-mono text-primary">{safeSettings.reverbLevel}%</span>
                     </div>
-
-                    <div className={`transition-all duration-300 ${safeSettings.isReverbActive ? 'opacity-100' : 'opacity-30 pointer-events-none grayscale'}`}>
-                        <div className="flex justify-between items-center mb-3">
-                            <span className="text-xs text-zinc-400 font-medium">{t('arsenal.intensity')}</span>
-                            <span className="text-primary font-bold text-sm bg-primary/10 px-2 py-0.5 rounded">{safeSettings.reverbLevel !== undefined ? safeSettings.reverbLevel : 50}%</span>
-                        </div>
-                        <input 
-                            type="range" 
-                            min="0" 
-                            max="100" 
-                            value={safeSettings.reverbLevel !== undefined ? safeSettings.reverbLevel : 50}
-                            onChange={(e) => onChange({ ...safeSettings, reverbLevel: parseInt(e.target.value) })}
-                            className="w-full h-2 bg-black rounded-lg appearance-none cursor-pointer accent-primary"
-                        />
-                        <div className="flex justify-between mt-2 text-[10px] text-zinc-500 font-bold uppercase">
-                            <span>{t('arsenal.dry')}</span>
-                            <span>{t('arsenal.wet')}</span>
-                        </div>
-                    </div>
+                    {safeSettings.isReverbActive && (
+                         <div className="flex items-center gap-4">
+                             <span className="text-xs text-zinc-500">Dry</span>
+                             <input 
+                                 type="range" 
+                                 min="0" 
+                                 max="100" 
+                                 value={safeSettings.reverbLevel}
+                                 onChange={(e) => onChange({ ...safeSettings, reverbLevel: Number(e.target.value) })}
+                                 className="flex-1 accent-primary bg-zinc-800 h-1.5 rounded-lg appearance-none cursor-pointer"
+                             />
+                             <span className="text-xs text-zinc-500">Wet</span>
+                         </div>
+                    )}
                 </div>
 
                 <div>
-                    <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.vibe')}</h3>
+                    <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.atmosphere')}</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                     {ARSENAL_OPTIONS.atmosphere.map(opt => (
                         <ToggleBadge 
@@ -334,7 +428,7 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
             </section>
           )}
 
-           {activeTab === 'fx' && (
+          {activeTab === 'fx' && (
             <section className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <h3 className="text-sm font-bold text-zinc-500 uppercase mb-4 pl-1 border-l-2 border-primary">{t('arsenal.headers.post')}</h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -353,13 +447,94 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
             </section>
           )}
 
+          {activeTab === 'presets' && (
+            <section className="animate-in fade-in slide-in-from-right-4 duration-300 space-y-6">
+                {/* Salvar Preset Atual */}
+                <div className="p-4 bg-zinc-900/60 border border-white/10 rounded-xl space-y-3">
+                    <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">Salvar Configurações Atuais como Preset</label>
+                    <div className="flex gap-2">
+                        <input
+                            type="text"
+                            value={presetName}
+                            onChange={(e) => setPresetName(e.target.value)}
+                            placeholder="Nome do seu preset (ex: Meu Trap Épico, Voz Quente...)"
+                            className="flex-1 bg-black border border-white/10 rounded-lg p-2.5 text-xs text-white placeholder-zinc-500 outline-none focus:border-primary"
+                        />
+                        <button
+                            type="button"
+                            onClick={savePreset}
+                            className="px-4 py-2.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-[#e05626] transition-colors flex items-center gap-1.5 shadow-lg shadow-primary/20"
+                        >
+                            <BookmarkCheck className="w-4 h-4" /> Salvar
+                        </button>
+                    </div>
+                </div>
+
+                {/* Meus Presets */}
+                {presets.length > 0 && (
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Meus Presets Customizados</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                            {presets.map((p: any, i: number) => (
+                                <div key={i} className="flex items-center justify-between bg-zinc-900/80 border border-white/5 rounded-xl p-3 hover:border-white/20 transition-all">
+                                    <div className="truncate pr-2">
+                                        <span className="text-xs font-bold text-white block truncate">{p.name}</span>
+                                        <span className="text-[10px] text-zinc-500">{(p.arsenal?.instruments || []).length} inst • {(p.arsenal?.mastering || []).join(', ') || 'Padrão'}</span>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        <button
+                                            type="button"
+                                            onClick={() => applyPreset(p.arsenal)}
+                                            className="px-3 py-1.5 bg-primary/20 text-primary border border-primary/30 rounded-lg text-xs font-bold hover:bg-primary hover:text-white transition-colors"
+                                        >
+                                            Aplicar
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => deletePreset(p.name)}
+                                            className="p-1.5 bg-zinc-800 text-red-400 rounded-lg hover:bg-red-900/40 transition-colors"
+                                            title="Excluir preset"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Templates de Estúdio Recomendados */}
+                <div className="space-y-3">
+                    <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Templates de Estúdio Prontos</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        {DEFAULT_PRESET_TEMPLATES.map((tmpl, idx) => (
+                            <div key={idx} className="bg-zinc-900/50 border border-white/5 rounded-xl p-3.5 flex flex-col justify-between gap-3 hover:border-primary/40 transition-all group">
+                                <div>
+                                    <span className="text-xs font-bold text-white block group-hover:text-primary transition-colors">{tmpl.name}</span>
+                                    <p className="text-[11px] text-zinc-400 mt-1 leading-relaxed">{tmpl.description}</p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => applyPreset(tmpl.arsenal)}
+                                    className="w-full py-2 bg-zinc-800 hover:bg-primary text-zinc-300 hover:text-white rounded-lg text-xs font-bold transition-colors text-center"
+                                >
+                                    Carregar Template
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </section>
+          )}
+
         </div>
 
         {/* Info Panel & Footer (Fixed) */}
         <div className="border-t border-white/10 bg-[#09090b] shrink-0 flex flex-col relative z-20">
             
             {/* Dynamic Description Box - Fixed Height to prevent jumping */}
-            <div className="h-[80px] px-6 py-3 flex items-center justify-center border-b border-white/5 bg-zinc-900/80 backdrop-blur-sm">
+            <div className="h-[70px] px-6 py-2.5 flex items-center justify-center border-b border-white/5 bg-zinc-900/80 backdrop-blur-sm">
                 {hoveredDesc ? (
                     <div className="w-full flex gap-4 items-center animate-in fade-in slide-in-from-bottom-2 duration-200">
                         <div className="p-2 bg-primary/20 rounded-full shrink-0">
@@ -378,8 +553,9 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
             {/* Action Button */}
             <div className="p-4 bg-[#09090b]">
                 <button 
+                    type="button"
                     onClick={onClose}
-                    className="w-full py-3.5 bg-primary hover:bg-violet-600 text-white font-bold rounded-xl transition-all shadow-[0_4px_20px_rgba(139,92,246,0.3)] active:scale-[0.99] flex items-center justify-center gap-2"
+                    className="w-full py-3.5 bg-primary hover:bg-[#e05626] text-white font-bold rounded-xl transition-all shadow-[0_4px_20px_rgba(255,107,61,0.25)] active:scale-[0.99] flex items-center justify-center gap-2 text-sm uppercase tracking-wider"
                 >
                     <CheckCircle2 className="w-5 h-5" />
                     {t('arsenal.confirm')}
@@ -411,18 +587,19 @@ const ToggleBadge: React.FC<ToggleBadgeProps> = ({
 }) => {
   return (
     <button
+        type="button"
         onClick={onClick}
         onMouseEnter={() => onHover(desc)}
         onMouseLeave={onLeave}
         className={`
             relative overflow-hidden px-4 py-3 rounded-xl text-xs font-bold transition-all duration-200 border flex flex-col items-center justify-center text-center gap-1 h-full min-h-[70px] w-full
             ${active
-                ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(139,92,246,0.2)]'
+                ? 'bg-primary/20 border-primary text-white shadow-[0_0_15px_rgba(255,107,61,0.2)]'
                 : 'bg-zinc-900 border-white/5 text-zinc-400 hover:border-white/20 hover:bg-white/5 hover:text-zinc-200'
             }
         `}
     >
-        {active && <div className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-bl-md shadow-[0_0_5px_#8b5cf6]" />}
+        {active && <div className="absolute top-0 right-0 w-2 h-2 bg-primary rounded-bl-md shadow-[0_0_5px_#ff6b3d]" />}
         {label}
     </button>
   );

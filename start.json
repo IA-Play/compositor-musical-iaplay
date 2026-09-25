@@ -9,10 +9,27 @@
       }
     },
     {
+      "when": "{{platform === 'win32' && exists('server/yue_server.py')}}",
+      "method": "shell.run",
+      "params": {
+        "message": "server\\start_server.bat",
+        "on": [{ "event": "/(Iniciando servidor dedicado YuE2|Uvicorn running on|127\\.0\\.0\\.1:42024|Application startup complete)/i", "done": true }]
+      }
+    },
+    {
+      "when": "{{platform !== 'win32' && exists('server/yue_server.py')}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "python server/yue_server.py --port 42024 --host 127.0.0.1",
+        "on": [{ "event": "/(Iniciando servidor dedicado YuE2|Uvicorn running on|127\\.0\\.0\\.1:42024|Application startup complete)/i", "done": true }]
+      }
+    },
+    {
       "method": "shell.run",
       "params": {
         "message": "npm run dev -- --host 127.0.0.1 --port {{port}}",
-        "on": [{ "event": "/(http:\\/\\/[a-zA-Z0-9.:_-]+)/", "done": true }]
+        "on": [{ "event": "/(http:\\/\\/[0-9.:]+)/", "done": true }]
       }
     },
     {
@@ -23,5 +40,3 @@
     }
   ]
 }
-
-

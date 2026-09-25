@@ -103,10 +103,10 @@ export const Landing: React.FC = () => {
                             transition={{ duration: 0.8, delay: 0.8 }}
                             className="flex flex-col md:flex-row items-center justify-center gap-4 pt-8 relative"
                         >
-                            <Link to="/register" aria-label="Criar conta gratuitamente e gerar músicas com IA" className="group relative w-full md:w-auto px-10 py-5 bg-white text-black rounded-full font-bold text-lg hover:scale-105 transition-all flex items-center justify-center gap-2 shadow-[0_0_40px_rgba(255,107,61,0.25)] overflow-hidden">
-                                <span className="absolute inset-0 w-full h-full -ml-[100%] bg-gradient-to-r from-transparent via-black/10 to-transparent group-hover:animate-shimmer" />
-                                <span className="relative z-10 flex items-center gap-2">{t('hero.cta_primary')} <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" /></span>
-                            </Link>
+                            <a href="https://pinokio.co/posts/01m0jmva8zw723vmywwp8jvk35" target="_blank" rel="noopener noreferrer" aria-label="Baixar IAPLAY Studio no Pinokio" className="group relative w-full md:w-auto px-10 py-5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-full font-bold text-lg hover:scale-105 transition-all flex items-center justify-center gap-2 shadow-[0_0_40px_rgba(59,130,246,0.35)] overflow-hidden">
+                                <span className="absolute inset-0 w-full h-full -ml-[100%] bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shimmer" />
+                                <span className="relative z-10 flex items-center gap-2">📥 Baixar no Pinokio <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" aria-hidden="true" /></span>
+                            </a>
                             <button onClick={scrollToFeatures} aria-label="Ver mais recursos detalhados da orquestração de prompts" className="w-full md:w-auto px-10 py-5 bg-transparent glass-panel text-white rounded-full font-bold text-lg hover:bg-white/10 transition-colors cursor-pointer">
                                 {t('hero.cta_secondary')}
                             </button>
@@ -513,15 +513,15 @@ export const Landing: React.FC = () => {
                             {t('cta_final.title')}
                         </h2>
                         <div className="flex justify-center">
-                            <Link to="/register" aria-label="Começar teste grátis agora" className="group px-12 py-6 bg-white text-black text-xl font-bold rounded-full hover:scale-105 transition-transform shadow-[0_0_50px_rgba(255,255,255,0.35)] flex items-center gap-3 relative overflow-hidden">
-                                <span className="absolute inset-0 w-full h-full -ml-[100%] bg-gradient-to-r from-transparent via-black/10 to-transparent group-hover:animate-shimmer" />
+                            <a href="https://pinokio.co/posts/01m0jmva8zw723vmywwp8jvk35" target="_blank" rel="noopener noreferrer" aria-label="Baixar IAPLAY Studio no Pinokio" className="group px-12 py-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white text-xl font-extrabold rounded-full hover:scale-105 transition-transform shadow-[0_0_50px_rgba(59,130,246,0.4)] flex items-center gap-3 relative overflow-hidden">
+                                <span className="absolute inset-0 w-full h-full -ml-[100%] bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-shimmer" />
                                 <span className="relative z-10 flex items-center gap-2">
-                                    {t('cta_final.btn')}
+                                    📥 Baixar no Pinokio
                                     <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" aria-hidden="true" />
                                 </span>
-                            </Link>
+                            </a>
                         </div>
-                        <p className="mt-6 text-zinc-500 text-sm">Garantia de satisfação ou cancelamento imediato.</p>
+                        <p className="mt-6 text-zinc-500 text-sm">Instalação 1-Click • Compatível com Windows, Mac e Linux via Pinokio</p>
                     </motion.div>
                 </section>
             </main>
@@ -538,9 +538,9 @@ export const Landing: React.FC = () => {
                     </div>
                     <p className="text-zinc-500 text-sm">© 2024 IAPLAY Compositor Musical. Todos os direitos reservados.</p>
                     <div className="flex justify-center gap-6 mt-6 text-sm text-zinc-400">
-                        <Link to="/terms" className="hover:text-white transition-colors">Termos de Uso</Link>
-                        <Link to="/privacy" className="hover:text-white transition-colors">Privacidade</Link>
-                        <Link to="/support" className="hover:text-white transition-colors">Suporte</Link>
+                        <a href="https://pinokio.co/posts/01m0jmva8zw723vmywwp8jvk35" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:text-blue-300 transition-colors font-bold">Download no Pinokio</a>
+                        <Link to="/tutorial" className="hover:text-white transition-colors">Tutorial</Link>
+                        <Link to="/dashboard" className="hover:text-white transition-colors">Estúdio</Link>
                     </div>
                 </div>
             </footer>

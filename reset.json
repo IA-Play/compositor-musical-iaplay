@@ -1,0 +1,18 @@
+{
+  "run": [
+    {
+      "method": "shell.run",
+      "params": {
+        "message": [
+          "npm cache clean --force"
+        ]
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "html": "Cache resetado com sucesso. Execute 'Instalar / Reinstalar' caso precise reinstalar os pacotes."
+      }
+    }
+  ]
+}

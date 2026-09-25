@@ -15,7 +15,7 @@ const promptLabels: Record<string, string> = {
     promptStructure: "Mestre: Estruturador (Suno/Udio)",
     promptRemix: "Mestre: Remix & Transferência de Estilo",
     promptLength: "Mestre: Ajuste de Tamanho",
-    promptStyles: "Mestre: Extrator de Tags de Estilo",
+    promptStyles: "Mestre: Style Description Architect (Suno / Udio / YuE2)",
     promptAnalyze: "Mestre: Analista de Briefing (Assistente)",
     promptCompress: "Mestre: Compressor de Prompt",
     promptForensic: "Mestre: DNA Sônico (Análise Forense)",

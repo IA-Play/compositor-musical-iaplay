@@ -1,0 +1,25 @@
+{
+  "run": [
+    {
+      "when": "{{platform === 'win32'}}",
+      "method": "shell.run",
+      "params": {
+        "message": "server\\download_models.bat"
+      }
+    },
+    {
+      "when": "{{platform !== 'win32'}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": "python server/download_models.py"
+      }
+    },
+    {
+      "method": "notify",
+      "params": {
+        "html": "Modelos neurais YuE2 3B e SheetSage2 configurados com sucesso no IAPLAY!"
+      }
+    }
+  ]
+}

@@ -15,7 +15,7 @@ interface ProjectState {
     setError: (error: string | null) => void;
 
     // Logic Helpers
-    updateProjectLocally: (project: Project) => void;
+    updateProjectLocally: (project: Project | ((prev: Project) => Project)) => void;
     removeProjectLocally: (id: string) => void;
 }
 
@@ -33,7 +33,15 @@ export const useProjectStore = create<ProjectState>((set) => ({
     setLoading: (isLoading) => set({ isLoading }),
     setError: (error) => set({ error }),
 
-    updateProjectLocally: (updated) => set((state) => {
+    updateProjectLocally: (updatedOrFn) => set((state) => {
+        let updated: Project;
+        if (typeof updatedOrFn === 'function') {
+            const current = state.currentProject || state.projects.find(p => p && p.id) || null;
+            if (!current) return state;
+            updated = (updatedOrFn as (prev: Project) => Project)(current);
+        } else {
+            updated = updatedOrFn;
+        }
         if (!updated || !updated.id) return state;
         const currentList = Array.isArray(state.projects)
             ? state.projects.filter((p): p is Project => Boolean(p && typeof p === 'object' && p.id))

@@ -1,9 +1,22 @@
-﻿{
+{
   "run": [
     {
       "method": "shell.run",
       "params": {
-        "message": "git pull"
+        "message": [
+          "git pull",
+          "npm install",
+          "npm run build"
+        ]
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "message": [
+          "uv pip install -r server/requirements.txt --index-strategy unsafe-best-match"
+        ]
       }
     },
     {
