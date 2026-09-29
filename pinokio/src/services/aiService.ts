@@ -929,6 +929,10 @@ export const parseStructuredPrompt = (raw: string): { styleText: string; lyricsT
     let styleText = '';
     let lyricsText = '';
 
+    // Detecta tag de idioma no início (ex: [BRAZILIAN PORTUGUESE], [ENGLISH], [SPANISH])
+    const langMatch = raw.match(/^\s*(\[(?:BRAZILIAN\s+PORTUGUESE|PORTUGUESE|ENGLISH|SPANISH|LATIN\s+SPANISH|FRENCH|GERMAN|ITALIAN|JAPANESE|KOREAN|CHINESE)\])/i);
+    const langTag = langMatch ? langMatch[1] : '';
+
     // Regex para identificar o cabeçalho da seção de letra estruturada de todas as plataformas
     const lyricsHeaderMatch = raw.match(
         /(?:^|\n)(?:(?:\d+[\.\)]|#{1,4})\s*)?\[(?:LETRA\s+ESTRUTURADA(?:\s+YUE2)?|CUSTOM\s+LYRICS|LYRICS\s*(?:&|AND)\s*STRUCTURE|LETRA|LYRICS)\][^\n]*/i
@@ -949,12 +953,33 @@ export const parseStructuredPrompt = (raw: string): { styleText: string; lyricsT
         } else {
             styleText = beforeLyrics;
         }
+
+        // Se houver uma tag de idioma no cabeçalho geral mas ausente na letra, preserva no topo da letra
+        if (langTag && !lyricsText.toLowerCase().includes(langTag.toLowerCase())) {
+            lyricsText = `${langTag}\n\n${lyricsText}`;
+        }
     } else {
         // Fallback: se não houver o cabeçalho padrão, busca a primeira metatag musical clássica [Intro], [Verse], etc.
         const metaTagMatch = raw.match(/(?:^|\n)\s*(\[(?:Intro|Verse|Chorus|Refr[aã]o|Ponte|Bridge|Drop|Outro|Pre-Chorus)[^\]]*\])/i);
         if (metaTagMatch && metaTagMatch.index !== undefined) {
-            styleText = raw.substring(0, metaTagMatch.index).trim();
-            lyricsText = raw.substring(metaTagMatch.index).trim();
+            const beforeMeta = raw.substring(0, metaTagMatch.index).trim();
+
+            // Verifica se há [PROMPT_GLOBAL: ...]
+            const globalMatch = beforeMeta.match(/\[PROMPT_GLOBAL:\s*([^\]]+)\]/i);
+            if (globalMatch) {
+                styleText = globalMatch[1].trim();
+            } else {
+                // Remove a tag de idioma da seção de estilo
+                styleText = beforeMeta.replace(/^\s*\[(?:BRAZILIAN\s+PORTUGUESE|PORTUGUESE|ENGLISH|SPANISH|LATIN\s+SPANISH|FRENCH|GERMAN|ITALIAN|JAPANESE|KOREAN|CHINESE)\]\s*/i, '').trim();
+            }
+
+            const lyricsBody = raw.substring(metaTagMatch.index).trim();
+            // Mantém a tag de idioma no topo da letra estruturada
+            if (langTag) {
+                lyricsText = `${langTag}\n\n${lyricsBody}`;
+            } else {
+                lyricsText = lyricsBody;
+            }
         } else {
             lyricsText = raw.trim();
         }

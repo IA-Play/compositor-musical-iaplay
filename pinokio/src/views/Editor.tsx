@@ -1371,7 +1371,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
             <YuEGenerationModal
                 isOpen={showYuEModal}
                 onClose={() => setShowYuEModal(false)}
-                initialLyrics={project.lyrics}
+                initialLyrics={project.promptFinal || generatedPrompt || project.lyrics}
                 initialStyle={(project.extractedStyles && project.extractedStyles.length > 0) ? project.extractedStyles.join(', ') : (project.stylePrompt || project.styles.join(', '))}
                 structuredPrompt={project.promptFinal || generatedPrompt}
                 projectTitle={project.title}
