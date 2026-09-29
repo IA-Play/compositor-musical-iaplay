@@ -889,17 +889,114 @@ ${detailedInstructions || "No additional specific instructions."}
             prompt += `\n\n[LYRICS]\n${project.lyrics}`;
         }
 
-        // Injeta instrucao especializada de plataforma
-        prompt += `\n\n${platformInstructions}\n\nIMPORTANTE: Retorne a estrutura completa preservando toda a letra fornecida e aplicando todas as tags musicais apropriadas para ${platform}.`;
+        // Injeta instrucao especializada de plataforma com protocolo rigido anti-omissao
+        const zeroTruncationInstruction = `
+CRITICAL INSTRUCTION - ZERO TRUNCATION & 100% LYRIC PRESERVATION:
+- Do NOT use ellipses "..." or placeholders anywhere.
+- Every single verse, chorus, bridge, and line from the source lyrics MUST be printed in full, word for word.
+- If a chorus repeats, reproduce the complete chorus lyrics every single time.
+- Do NOT swap, combine, or duplicate verses (Verse 1 must not be repeated as Verse 2).
+- Keep all original lyrics 100% intact from start to finish.
+`.trim();
+
+        prompt += `\n\n${platformInstructions}\n\n${zeroTruncationInstruction}\n\nIMPORTANTE: Retorne a estrutura completa preservando toda a letra fornecida e aplicando todas as tags musicais apropriadas para ${platform}. NUNCA OMITA VERSOS NEM USE RETICÊNCIAS "...".`;
 
         const rawResult = await unifiedGenerate(prompt, provider);
         
+        // Recupera seções truncadas com reticências (...) caso o modelo tenha omitido letras
+        const restored = restoreTruncatedSections(rawResult, project.lyrics);
+
         // Formata o resultado para a plataforma selecionada sem perda de dados
-        return formatForPlatform(rawResult, platform);
+        return formatForPlatform(restored, platform);
     } catch (error) {
         console.error("Erro ao estruturar prompt:", error);
         throw error;
     }
+};
+
+/**
+ * Extrai um mapa de seções e suas respectivas letras a partir de um texto original.
+ */
+export const extractSectionsMap = (text: string): Map<string, string> => {
+    const map = new Map<string, string>();
+    if (!text || !text.trim()) return map;
+
+    const sectionRegex = /(?:^|\n)\s*(\[(?:Intro|Verse\s*\d*|Chorus\s*\d*|Refr[aã]o\s*\d*|Bridge\s*\d*|Ponte\s*\d*|Drop\s*\d*|Outro\s*\d*|Pre-Chorus\s*\d*)[^\]]*\])/gi;
+    const matches: { tag: string; index: number; fullMatch: string }[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = sectionRegex.exec(text)) !== null) {
+        matches.push({ tag: match[1], index: match.index, fullMatch: match[0] });
+    }
+
+    for (let i = 0; i < matches.length; i++) {
+        const current = matches[i];
+        const next = matches[i + 1];
+        const rawContent = next
+            ? text.substring(current.index + current.fullMatch.length, next.index)
+            : text.substring(current.index + current.fullMatch.length);
+
+        const cleanLyrics = rawContent
+            .replace(/\[Production\s+Note:[^\]]*\]/gi, '')
+            .replace(/\[Prod:[^\]]*\]/gi, '')
+            .trim();
+
+        if (cleanLyrics && cleanLyrics !== '...' && cleanLyrics !== '…') {
+            const key = current.tag.toLowerCase().replace(/\s+/g, ' ').trim();
+            map.set(key, cleanLyrics);
+            const baseTag = key.replace(/\s*\d+/, '');
+            if (!map.has(baseTag)) {
+                map.set(baseTag, cleanLyrics);
+            }
+        }
+    }
+
+    return map;
+};
+
+/**
+ * Corrige e restaura qualquer seção lírica que o modelo tenha truncado com reticências (...)
+ * ou duplicado erroneamente.
+ */
+export const restoreTruncatedSections = (generated: string, original: string): string => {
+    if (!generated || !original) return generated;
+    const originalSections = extractSectionsMap(original);
+    if (originalSections.size === 0) return generated;
+
+    let result = generated;
+
+    // 1. Substitui seções onde o corpo lírico foi substituído por reticências (...) ou (…)
+    result = result.replace(
+        /(\[(?:Intro|Verse\s*\d*|Chorus\s*\d*|Refr[aã]o\s*\d*|Bridge\s*\d*|Ponte\s*\d*|Drop\s*\d*|Outro\s*\d*|Pre-Chorus\s*\d*)[^\]]*\]\s*)(?:\.{3,}|…)([\s\S]*?(?=(?:\[(?:Intro|Verse|Chorus|Refr[aã]o|Bridge|Ponte|Drop|Outro|Pre-Chorus)|$)))/gi,
+        (match, sectionHeader, restOfSection) => {
+            const tagKey = sectionHeader.trim().toLowerCase().replace(/\s+/g, ' ');
+            const baseTagKey = tagKey.replace(/\s*\d+/, '');
+            const recoveredLyrics = originalSections.get(tagKey) || originalSections.get(baseTagKey);
+
+            if (recoveredLyrics) {
+                const trimmedRest = restOfSection.trim();
+                return `${sectionHeader.trim()}\n${recoveredLyrics}\n${trimmedRest ? '\n' + trimmedRest : ''}\n\n`;
+            }
+            return match;
+        }
+    );
+
+    // 2. Corrige duplicação indevida de Verse 1 dentro de Verse 2
+    const verse1Original = originalSections.get('[verse 1]') || originalSections.get('[verse]');
+    const verse2Original = originalSections.get('[verse 2]');
+    if (verse1Original && verse2Original && verse1Original !== verse2Original) {
+        const verse2Regex = /(\[Verse\s*2[^\]]*\]\s*)([\s\S]*?)(?=\n\s*\[(?:Production\s+Note|Prod|Chorus|Bridge|Verse|Outro)|$)/i;
+        const v2Match = result.match(verse2Regex);
+        if (v2Match) {
+            const currentV2Lyrics = v2Match[2].trim();
+            const firstLineV1 = verse1Original.split('\n')[0].trim();
+            if (currentV2Lyrics.includes(firstLineV1) && !currentV2Lyrics.includes(verse2Original.split('\n')[0].trim())) {
+                result = result.replace(verse2Regex, `$1${verse2Original}\n`);
+            }
+        }
+    }
+
+    return result;
 };
 
 // --- Suporte nativo ao Suno, Udio e Mureka.ai ---
