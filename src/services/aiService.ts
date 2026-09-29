@@ -726,8 +726,10 @@ const formatArsenalForPrompt = (arsenal: ArsenalSettings): string => {
     const mastering = ensureArray(arsenal.mastering);
     const effects = ensureArray(arsenal.effects);
     const rhythm = ensureArray(arsenal.rhythm);
+    const voiceTypes = ensureArray(arsenal.voiceTypes);
 
     return `
+    - Vocal Profile / Voice Type (High Priority): ${voiceTypes.join(", ") || "Free Choice / Natural"}
     - Instruments (High Priority): ${instruments.join(", ") || "Free Choice"}
     - Atmosphere: ${atmosphere.join(", ") || "Standard"}
     - Reverb: ${arsenal.isReverbActive ? `Active (${arsenal.reverbLevel !== undefined ? arsenal.reverbLevel : 50}%)` : "Dry"}

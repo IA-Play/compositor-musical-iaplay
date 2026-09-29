@@ -852,28 +852,55 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             </div>
 
                             {/* Tags Input */}
-                            <div className="flex flex-wrap gap-2 p-2 bg-zinc-900 border border-white/10 rounded-lg min-h-[40px]">
+                            <div className="flex flex-wrap gap-1.5 p-2 bg-zinc-900/90 border border-white/10 rounded-lg min-h-[38px] max-h-24 overflow-y-auto custom-scrollbar focus-within:border-primary/50 transition-colors">
                                 {project.styles.map((tag, i) => (
-                                    <span key={i} className="text-[10px] bg-black border border-primary/30 text-primary px-2 py-0.5 rounded flex items-center gap-1">
+                                    <span key={i} className="text-[9px] font-medium bg-black border border-primary/40 text-primary px-1.5 py-0.5 rounded flex items-center gap-1 shrink-0">
                                         {tag}
-                                        <button onClick={() => removeStyleTag(tag)} className="hover:text-white"><X className="w-3 h-3" /></button>
+                                        <button onClick={() => removeStyleTag(tag)} className="hover:text-white transition-colors"><X className="w-2.5 h-2.5" /></button>
                                     </span>
                                 ))}
                                 <input
                                     value={styleInput}
                                     onChange={(e) => setStyleInput(e.target.value)}
                                     onKeyDown={handleStyleKeyDown}
-                                    className="flex-1 bg-transparent text-xs text-white outline-none min-w-[60px]"
+                                    className="flex-1 bg-transparent text-[11px] text-white outline-none min-w-[70px]"
                                     placeholder={t('editor.tags_placeholder')}
                                 />
                             </div>
 
-                            {/* Quick Suggestions */}
-                            <div className="flex flex-wrap gap-1.5 pt-2">
-                                <span className="text-[9px] text-zinc-600 font-bold uppercase mr-1 pt-1">{t('editor.suggestions')}:</span>
-                                {(sysSettings?.listStyles || ["Pop", "Trap", "Synthwave"]).map((s: string) => (
-                                    <button key={s} onClick={() => addStyleTag(s)} className="text-[10px] px-2 py-0.5 bg-zinc-900 hover:bg-zinc-800 border border-white/5 rounded text-zinc-400 hover:text-white transition-colors">{s}</button>
-                                ))}
+                            {/* Quick Suggestions & Autocomplete com Rolagem Compacta */}
+                            <div className="space-y-1.5 pt-1">
+                                <div className="flex items-center justify-between text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
+                                    <span>{styleInput.trim() ? 'Ritmos Correspondentes' : t('editor.suggestions')}</span>
+                                    {styleInput.trim() && (
+                                        <span className="text-[9px] text-primary/80 lowercase font-normal">filtrando por "{styleInput}"</span>
+                                    )}
+                                </div>
+                                <div className="max-h-24 overflow-y-auto custom-scrollbar p-1.5 bg-black/50 border border-white/5 rounded-lg flex flex-wrap gap-1">
+                                    {((sysSettings?.listStyles || ["Pop", "Trap", "Synthwave"]) as string[])
+                                        .filter((s: string) => 
+                                            !project.styles.includes(s) &&
+                                            (!styleInput.trim() || s.toLowerCase().includes(styleInput.trim().toLowerCase()))
+                                        )
+                                        .map((s: string) => (
+                                            <button 
+                                                key={s} 
+                                                onClick={() => addStyleTag(s)} 
+                                                className="text-[9px] px-2 py-0.5 bg-zinc-900 hover:bg-primary/20 hover:border-primary/40 border border-white/5 rounded text-zinc-300 hover:text-white transition-all flex items-center gap-1 shrink-0"
+                                            >
+                                                <span>+</span>
+                                                <span>{s}</span>
+                                            </button>
+                                        ))}
+                                    {styleInput.trim() && !project.styles.includes(styleInput.trim()) && (
+                                        <button
+                                            onClick={() => addStyleTag(styleInput.trim())}
+                                            className="text-[9px] px-2 py-0.5 bg-primary/20 border border-primary/50 text-white rounded hover:bg-primary transition-all font-semibold flex items-center gap-1 shrink-0"
+                                        >
+                                            <span>Criar "{styleInput.trim()}"</span>
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             <select
@@ -1372,7 +1399,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                 isOpen={showYuEModal}
                 onClose={() => setShowYuEModal(false)}
                 initialLyrics={project.promptFinal || generatedPrompt || project.lyrics}
-                initialStyle={(project.extractedStyles && project.extractedStyles.length > 0) ? project.extractedStyles.join(', ') : (project.stylePrompt || project.styles.join(', '))}
+                initialStyle={(project.stylePrompt && project.stylePrompt.trim().length > 0) ? project.stylePrompt : ((project.extractedStyles && project.extractedStyles.length > 0) ? project.extractedStyles.join(', ') : project.styles.join(', '))}
                 structuredPrompt={project.promptFinal || generatedPrompt}
                 projectTitle={project.title}
                 onTrackSaved={handleTrackSaved}

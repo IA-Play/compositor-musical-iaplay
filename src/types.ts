@@ -65,6 +65,7 @@ export interface ArsenalSettings {
   atmosphere: string[];
   effects: string[];
   instruments: string[];
+  voiceTypes?: string[];
   forceInstruments: boolean;
   reverbLevel: number;
   isReverbActive: boolean;
@@ -125,6 +126,7 @@ export const INITIAL_PROJECT: Project = {
     atmosphere: [],
     effects: [],
     instruments: [],
+    voiceTypes: [],
     forceInstruments: false,
     reverbLevel: 50,
     isReverbActive: false

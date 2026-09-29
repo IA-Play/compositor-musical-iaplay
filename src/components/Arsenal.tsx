@@ -1,15 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { X, Music, Radio, Activity, Cloud, Zap, ShieldAlert, CheckCircle2, Info, Sparkles, Plus, Trash2, BookmarkCheck } from 'lucide-react';
+import { X, Music, Radio, Activity, Cloud, Zap, ShieldAlert, CheckCircle2, Info, Sparkles, Plus, Trash2, BookmarkCheck, Mic } from 'lucide-react';
 import { ArsenalSettings, AudioQuality } from '../types';
 import { getSystemSettings } from '../services/settingsService';
 import { useLanguage } from '../contexts/LanguageContext';
 
 interface ArsenalOption {
   value: string;
-  labelKey: string;
+  labelKey?: string;
+  label?: string;
+  desc?: string;
 }
 
 export const ARSENAL_OPTIONS = {
+  voicesFormation: [
+    { value: 'Voz Feminina', label: 'Voz Feminina', desc: 'Vocal principal feminino solo' },
+    { value: 'Voz Masculina', label: 'Voz Masculina', desc: 'Vocal principal masculino solo' },
+    { value: 'Dupla Sertaneja Masculina', label: 'Dupla Sertaneja Masculina', desc: 'Dupla tradicional com 1ª e 2ª voz em harmonia' },
+    { value: 'Dupla Sertaneja Feminina', label: 'Dupla Sertaneja Feminina', desc: 'Dupla sertaneja feminina com vozes harmonizadas' },
+    { value: 'Dueto Misto (Masc + Fem)', label: 'Dueto Misto (Masc + Fem)', desc: 'Interação e harmonia entre voz masculina e feminina' },
+    { value: 'Coral / Backing Vocals', label: 'Coral / Backing Vocals', desc: 'Coro polifônico em camadas e respostas vocais' },
+    { value: 'Vocal Infantil', label: 'Vocal Infantil', desc: 'Voz jovem, doce e delicada' },
+    { value: 'Gang Vocals (Coro de Estádio)', label: 'Gang Vocals (Coro de Estádio)', desc: 'Vozes em uníssono de multidão estilo arena' }
+  ] as ArsenalOption[],
+  voicesTexture: [
+    { value: 'Voz Rasgada e Rouca', label: 'Voz Rasgada e Rouca', desc: 'Drive natural com aspereza e rouquidão expressiva' },
+    { value: 'Voz Aveludada', label: 'Voz Aveludada', desc: 'Timbre macio, doce e encorpado' },
+    { value: 'Voz Potente / Belting', label: 'Voz Potente / Belting', desc: 'Projeção forte de peito em notas altas e sustentadas' },
+    { value: 'Voz Suave e Intimista', label: 'Voz Suave e Intimista', desc: 'Canto sussurrado próximo ao microfone com muito ar' },
+    { value: 'Voz Sussurrada', label: 'Voz Sussurrada', desc: 'Interpretação sussurrada cheia de intimidade' },
+    { value: 'Voz Aguda e Cristalina', label: 'Voz Aguda e Cristalina', desc: 'Frequências agudas limpas, transparentes e afinadas' },
+    { value: 'Voz Grave e Encorpada', label: 'Voz Grave e Encorpada', desc: 'Graves profundos e presença marcante de barítono/baixo' },
+    { value: 'Voz com Drive / Distorção', label: 'Voz com Drive / Distorção', desc: 'Distorção vocal estilo rock ou sertanejo rasgado' },
+    { value: 'Falsete Emotivo', label: 'Falsete Emotivo', desc: 'Transições suaves para voz de cabeça / falsete' },
+    { value: 'Vocal Melismático / R&B Gospel', label: 'Vocal Melismático / R&B Gospel', desc: 'Riffs e floreios vocais rápidos e expressivos' },
+    { value: 'Flow Rápido / Rítmico', label: 'Flow Rápido / Rítmico', desc: 'Cadência rítmica rápida e precisa sincronizada com o beat' },
+    { value: 'Vocal Melancólico e Emocional', label: 'Vocal Melancólico e Emocional', desc: 'Interpretação emotiva e vulnerável com lágrimas na voz' }
+  ] as ArsenalOption[],
   mastering: [
     { value: 'Radio Ready', labelKey: 'radio_ready' },
     { value: 'Raw / Demo', labelKey: 'raw' },
@@ -59,6 +85,7 @@ const DEFAULT_PRESET_TEMPLATES = [
       atmosphere: ["Dark"],
       effects: ["Autotune", "Distortion"],
       instruments: ["808 Bass", "Trap Hi-Hats", "Snare Roll", "Dark Synth"],
+      voiceTypes: ["Voz Masculina", "Flow Rápido / Rítmico"],
       forceInstruments: false,
       reverbLevel: 25,
       isReverbActive: true
@@ -74,6 +101,7 @@ const DEFAULT_PRESET_TEMPLATES = [
       atmosphere: ["Dreamy"],
       effects: ["Chorus", "Sidechain"],
       instruments: ["Acoustic Drums", "Synth Bass", "Electric Piano", "Claps"],
+      voiceTypes: ["Voz Feminina", "Voz Potente / Belting", "Voz Aveludada"],
       forceInstruments: false,
       reverbLevel: 35,
       isReverbActive: true
@@ -89,6 +117,7 @@ const DEFAULT_PRESET_TEMPLATES = [
       atmosphere: ["Intimate / Dry"],
       effects: [],
       instruments: ["Violão de Aço", "Cajón", "Piano Acústico"],
+      voiceTypes: ["Voz Suave e Intimista", "Voz Aveludada"],
       forceInstruments: false,
       reverbLevel: 15,
       isReverbActive: false
@@ -104,6 +133,7 @@ const DEFAULT_PRESET_TEMPLATES = [
       atmosphere: ["Cinematic", "Cathedral Reverb"],
       effects: ["Delay"],
       instruments: ["Orquestra Completa", "Tímpanos", "Cordas Épicas", "Metais"],
+      voiceTypes: ["Coral / Backing Vocals", "Gang Vocals (Coro de Estádio)"],
       forceInstruments: false,
       reverbLevel: 75,
       isReverbActive: true
@@ -120,9 +150,10 @@ interface ArsenalProps {
 
 export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings, onChange }) => {
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState<'master' | 'rhythm' | 'atmos' | 'inst' | 'fx' | 'presets'>('inst');
+  const [activeTab, setActiveTab] = useState<'voices' | 'inst' | 'master' | 'rhythm' | 'atmos' | 'fx' | 'presets'>('voices');
   const [hoveredDesc, setHoveredDesc] = useState<string | null>(null);
   const [instrumentInput, setInstrumentInput] = useState("");
+  const [voiceInput, setVoiceInput] = useState("");
   const [presetName, setPresetName] = useState('');
   const [presets, setPresets] = useState<{ name: string; arsenal: any }[]>([]);
   const PRESETS_KEY = 'iaplay_arsenal_presets';
@@ -178,6 +209,7 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
     atmosphere: settings?.atmosphere || [],
     effects: settings?.effects || [],
     instruments: settings?.instruments || [],
+    voiceTypes: settings?.voiceTypes || [],
     forceInstruments: settings?.forceInstruments || false,
     reverbLevel: settings?.reverbLevel !== undefined ? settings.reverbLevel : 50,
     isReverbActive: settings?.isReverbActive || false,
@@ -202,6 +234,26 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
 
   const removeInstrument = (val: string) => {
       onChange({ ...safeSettings, instruments: safeSettings.instruments.filter(i => i !== val) });
+  };
+
+  const addVoiceType = (val?: string) => {
+    const text = (val !== undefined ? val : voiceInput).trim();
+    if (text && !safeSettings.voiceTypes.includes(text)) {
+      onChange({ ...safeSettings, voiceTypes: [...safeSettings.voiceTypes, text] });
+      if (val === undefined) setVoiceInput("");
+    }
+  };
+
+  const removeVoiceType = (val: string) => {
+    onChange({ ...safeSettings, voiceTypes: safeSettings.voiceTypes.filter(v => v !== val) });
+  };
+
+  const toggleVoiceType = (val: string) => {
+    if (safeSettings.voiceTypes.includes(val)) {
+      removeVoiceType(val);
+    } else {
+      addVoiceType(val);
+    }
   };
 
   const TabButton = ({ id, icon: Icon, label }: { id: any, icon: any, label: string }) => (
@@ -260,6 +312,7 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
 
         {/* Tabs */}
         <div className="flex border-b border-white/10 bg-zinc-900 px-2 overflow-x-auto shrink-0 custom-scrollbar">
+            <TabButton id="voices" icon={Mic} label="Vocais & Voz" />
             <TabButton id="inst" icon={Music} label={t('arsenal.instruments')} />
             <TabButton id="master" icon={Radio} label={t('arsenal.mastering')} />
             <TabButton id="rhythm" icon={Activity} label={t('arsenal.rhythm')} />
@@ -271,6 +324,92 @@ export const ArsenalModal: React.FC<ArsenalProps> = ({ isOpen, onClose, settings
         {/* Content */}
         <div className="p-6 overflow-y-auto space-y-6 custom-scrollbar bg-[#050505] flex-1">
           
+          {activeTab === 'voices' && (
+            <section className="animate-in fade-in slide-in-from-right-4 duration-300">
+                <div className="flex flex-col gap-6">
+                    {/* Header Controls & Custom Voice Input */}
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-zinc-900/50 p-4 rounded-xl border border-white/5">
+                         <div className="flex items-center gap-3">
+                              <div className="p-2 bg-primary/10 rounded-lg text-primary">
+                                  <Mic className="w-5 h-5" />
+                              </div>
+                              <div>
+                                  <label className="text-sm text-zinc-200 font-bold block">Perfil e Estilo de Voz</label>
+                                  <p className="text-xs text-zinc-400">Defina gênero, formação e timbres para inclusão no prompt final</p>
+                              </div>
+                         </div>
+                         <div className="flex items-center gap-2 w-full md:w-auto">
+                            <input 
+                                value={voiceInput}
+                                onChange={(e) => setVoiceInput(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && addVoiceType()}
+                                placeholder="Adicionar voz personalizada (ex: Voz Lírica)..."
+                                className="flex-1 md:w-64 bg-black border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary outline-none"
+                            />
+                            <button type="button" onClick={() => addVoiceType()} className="p-2 bg-primary text-white rounded-lg hover:bg-[#e05626]">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                         </div>
+                    </div>
+
+                    {/* Selected Badges */}
+                    {safeSettings.voiceTypes.length > 0 && (
+                        <div className="flex flex-wrap gap-2 p-4 bg-zinc-900/20 border border-white/5 rounded-xl">
+                            {safeSettings.voiceTypes.map(voice => (
+                                <span key={voice} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/20 text-primary border border-primary/30">
+                                    <Mic className="w-3.5 h-3.5" />
+                                    {voice}
+                                    <button type="button" onClick={() => removeVoiceType(voice)} className="hover:text-white ml-0.5"><X className="w-3.5 h-3.5" /></button>
+                                </span>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Formação Vocal */}
+                    <div>
+                         <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider block mb-3 flex items-center gap-2">
+                             <span>Formação Vocal & Cantores</span>
+                             <span className="text-[10px] text-zinc-500 font-normal lowercase">(solo, dupla sertaneja, dueto, coral)</span>
+                         </span>
+                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                             {ARSENAL_OPTIONS.voicesFormation.map((opt) => (
+                                 <ToggleBadge
+                                     key={opt.value}
+                                     label={opt.label || opt.value}
+                                     desc={opt.desc || ''}
+                                     active={safeSettings.voiceTypes.includes(opt.value)}
+                                     onClick={() => toggleVoiceType(opt.value)}
+                                     onHover={setHoveredDesc}
+                                     onLeave={() => setHoveredDesc(null)}
+                                 />
+                             ))}
+                         </div>
+                    </div>
+
+                    {/* Textura, Timbre e Expressão */}
+                    <div>
+                         <span className="text-xs text-zinc-400 font-bold uppercase tracking-wider block mb-3 flex items-center gap-2">
+                             <span>Textura, Timbre & Expressão Vocal</span>
+                             <span className="text-[10px] text-zinc-500 font-normal lowercase">(voz rasgada, rouca, aveludada, potente, belting, intimista)</span>
+                         </span>
+                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                             {ARSENAL_OPTIONS.voicesTexture.map((opt) => (
+                                 <ToggleBadge
+                                     key={opt.value}
+                                     label={opt.label || opt.value}
+                                     desc={opt.desc || ''}
+                                     active={safeSettings.voiceTypes.includes(opt.value)}
+                                     onClick={() => toggleVoiceType(opt.value)}
+                                     onHover={setHoveredDesc}
+                                     onLeave={() => setHoveredDesc(null)}
+                                 />
+                             ))}
+                         </div>
+                    </div>
+                </div>
+            </section>
+          )}
+
           {activeTab === 'inst' && (
             <section className="animate-in fade-in slide-in-from-right-4 duration-300">
                 <div className="flex flex-col gap-6">

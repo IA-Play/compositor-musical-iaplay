@@ -110,20 +110,16 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
         const fullStructured = (structuredPrompt && structuredPrompt.trim()) || (initialLyrics && initialLyrics.trim());
         if (!fullStructured) return;
 
-        const hasExplicitLyricsHeader = /\[(?:LETRA\s+ESTRUTURADA(?:\s+YUE2)?|CUSTOM\s+LYRICS|LYRICS\s*(?:&|AND)\s*STRUCTURE)\]/i.test(fullStructured);
-        const parsed = parseStructuredPrompt(fullStructured);
+        // O que está configurado no prompt final vai DIRETO para a área de letra e estrutura musical, 100% preservado
+        setLyrics(fullStructured);
 
-        if (hasExplicitLyricsHeader && parsed.lyricsText && parsed.lyricsText.length > 5) {
-            setLyrics(parsed.lyricsText);
-        } else {
-            // Mantém a estrutura completa com tags de idioma, produção e seções musicais
-            setLyrics(fullStructured);
-        }
-
-        if (parsed.styleText && parsed.styleText.trim().length > 0) {
-            setStyle(parsed.styleText);
-        } else if (initialStyle && initialStyle.trim().length > 0) {
+        if (initialStyle && initialStyle.trim().length > 0) {
             setStyle(initialStyle);
+        } else {
+            const parsed = parseStructuredPrompt(fullStructured);
+            if (parsed.styleText && parsed.styleText.trim().length > 0) {
+                setStyle(parsed.styleText);
+            }
         }
     };
 
@@ -132,24 +128,19 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
         if (isOpen) {
             const fullStructured = (structuredPrompt && structuredPrompt.trim()) || (initialLyrics && initialLyrics.trim());
             if (fullStructured) {
-                const hasExplicitLyricsHeader = /\[(?:LETRA\s+ESTRUTURADA(?:\s+YUE2)?|CUSTOM\s+LYRICS|LYRICS\s*(?:&|AND)\s*STRUCTURE)\]/i.test(fullStructured);
+                // O prompt final completo vai DIRETO para a área de geração musical
+                setLyrics(fullStructured);
+            } else if (initialLyrics) {
+                setLyrics(initialLyrics);
+            }
+
+            if (initialStyle && initialStyle.trim().length > 0) {
+                setStyle(initialStyle);
+            } else if (fullStructured) {
                 const parsed = parseStructuredPrompt(fullStructured);
-
-                if (hasExplicitLyricsHeader && parsed.lyricsText && parsed.lyricsText.length > 5) {
-                    setLyrics(parsed.lyricsText);
-                } else {
-                    // Mantém a estrutura completa com tags de idioma, produção e seções musicais
-                    setLyrics(fullStructured);
-                }
-
-                if (initialStyle && initialStyle.trim().length > 0) {
-                    setStyle(initialStyle);
-                } else if (parsed.styleText && parsed.styleText.trim().length > 0) {
+                if (parsed.styleText && parsed.styleText.trim().length > 0) {
                     setStyle(parsed.styleText);
                 }
-            } else {
-                if (initialLyrics) setLyrics(initialLyrics);
-                if (initialStyle) setStyle(initialStyle);
             }
             verifyConnection();
         } else {
