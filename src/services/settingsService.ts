@@ -23,7 +23,7 @@ const loadLocalSettings = (): SystemSettings => {
                     ? parsed.promptLyrics 
                     : DEFAULT_SETTINGS.promptLyrics,
                 promptInstrumental: parsed.promptInstrumental || DEFAULT_SETTINGS.promptInstrumental,
-                promptStructure: (parsed.promptStructure && parsed.promptStructure.includes("ZERO TRUNCATION")) 
+                promptStructure: (parsed.promptStructure && parsed.promptStructure.includes("DYNAMIC STYLE ADAPTATION")) 
                     ? parsed.promptStructure 
                     : DEFAULT_SETTINGS.promptStructure,
                 promptRemix: parsed.promptRemix || DEFAULT_SETTINGS.promptRemix,

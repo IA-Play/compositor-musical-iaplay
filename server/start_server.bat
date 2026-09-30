@@ -19,6 +19,12 @@ if "%PYTHON_EXE%"=="" if exist "E:\pinokio\api\Maestro.git\app\env\Scripts\pytho
 if "%PYTHON_EXE%"=="" if exist "C:\pinokio\api\Maestro.git\app\env-sol\Scripts\python.exe" set PYTHON_EXE=C:\pinokio\api\Maestro.git\app\env-sol\Scripts\python.exe
 if "%PYTHON_EXE%"=="" set PYTHON_EXE=python
 
+netstat -ano | findstr ":42024 " | findstr "LISTENING" >nul
+if %ERRORLEVEL% equ 0 (
+    echo [IAPLAY Engine] Servidor dedicado YuE2 ja esta ativo na porta 42024.
+    exit /b 0
+)
+
 echo [IAPLAY Engine] Utilizando Python: %PYTHON_EXE%
 echo [IAPLAY Engine] Iniciando servidor dedicado YuE2 na porta 42024...
 "%PYTHON_EXE%" "%~dp0yue_server.py" --port 42024 --host 127.0.0.1

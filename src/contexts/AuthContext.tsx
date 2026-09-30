@@ -17,6 +17,7 @@ export const DEFAULT_LOCAL_USER: User = {
     groqApiKey: '',
     cerebrasApiKey: '',
     openrouterApiKey: '',
+    nvidiaApiKey: '',
     mistralApiKey: '',
     togetherApiKey: '',
     ollamaUrl: 'http://localhost:11434',
@@ -33,9 +34,7 @@ interface AuthContextType {
     verifyEmail: (code: string) => Promise<void>;
     logout: () => void;
     startTrial: () => Promise<void>;
-    upgradePlan: (plan: PlanTier, duration: 'monthly' | 'yearly', sessionId?: string) => Promise<void>;
-    updateApiKeys: (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string; maestroUrl?: string }) => void;
-    updateProfile: (data: { name?: string; password?: string, creativeContext?: string }) => Promise<void>;
+    updateApiKeys: (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; nvidia?: string; nvidiaModel?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string; maestroUrl?: string }) => void;
     cancelSubscription: () => Promise<void>;
     refreshProfile: () => Promise<void>;
     deleteAccount: () => Promise<void>;
@@ -67,6 +66,7 @@ const rawDataToUser = (data: any): User => ({
     groqApiKey: data.groqApiKey || data.groq_api_key || '',
     cerebrasApiKey: data.cerebrasApiKey || data.cerebras_api_key || '',
     openrouterApiKey: data.openrouterApiKey || data.openrouter_api_key || '',
+    nvidiaApiKey: data.nvidiaApiKey || data.nvidia_api_key || '',
     mistralApiKey: data.mistralApiKey || data.mistral_api_key || '',
     togetherApiKey: data.togetherApiKey || data.together_api_key || '',
     ollamaUrl: data.ollamaUrl || data.ollama_url || 'http://localhost:11434',
@@ -207,7 +207,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const updateApiKeys = (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string; maestroUrl?: string }) => {
+    const updateApiKeys = (keys: { google?: string; openai?: string; groq?: string; cerebras?: string; openrouter?: string; nvidia?: string; nvidiaModel?: string; mistral?: string; together?: string; ollamaUrl?: string; ollamaModel?: string; maestroUrl?: string }) => {
         const currentUser = user || DEFAULT_LOCAL_USER;
         const updatedUser = { ...currentUser };
         if (keys.google !== undefined) updatedUser.googleApiKey = keys.google;
@@ -215,6 +215,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (keys.groq !== undefined) updatedUser.groqApiKey = keys.groq;
         if (keys.cerebras !== undefined) updatedUser.cerebrasApiKey = keys.cerebras;
         if (keys.openrouter !== undefined) updatedUser.openrouterApiKey = keys.openrouter;
+        if (keys.nvidia !== undefined) updatedUser.nvidiaApiKey = keys.nvidia;
+        if (keys.nvidiaModel !== undefined) updatedUser.nvidiaModel = keys.nvidiaModel;
         if (keys.mistral !== undefined) updatedUser.mistralApiKey = keys.mistral;
         if (keys.together !== undefined) updatedUser.togetherApiKey = keys.together;
         if (keys.ollamaUrl !== undefined) updatedUser.ollamaUrl = keys.ollamaUrl;
@@ -233,6 +235,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 openaiApiKey: updatedUser.openaiApiKey,
                 cerebrasApiKey: updatedUser.cerebrasApiKey,
                 openrouterApiKey: updatedUser.openrouterApiKey,
+                nvidiaApiKey: updatedUser.nvidiaApiKey,
+                nvidiaModel: updatedUser.nvidiaModel,
                 mistralApiKey: updatedUser.mistralApiKey,
                 togetherApiKey: updatedUser.togetherApiKey,
                 ollamaUrl: updatedUser.ollamaUrl,
@@ -249,6 +253,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 groq: keys.groq,
                 cerebras: keys.cerebras,
                 openrouter: keys.openrouter,
+                nvidia: keys.nvidia,
                 mistral: keys.mistral,
                 together: keys.together
             }).catch(() => {});

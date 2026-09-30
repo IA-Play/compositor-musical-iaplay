@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { Project } from '../types';
-import { getLocalProjects } from './projectService';
+import { getLocalProjects, setLocalProjects } from './projectService';
 
 interface ProjectState {
     projects: Project[];
@@ -50,6 +50,9 @@ export const useProjectStore = create<ProjectState>((set) => ({
         const newProjects = exists
             ? currentList.map(p => p.id === updated.id ? updated : p)
             : [updated, ...currentList];
+
+        setLocalProjects(newProjects);
+
         return {
             projects: newProjects,
             currentProject: state.currentProject?.id === updated.id ? updated : state.currentProject
@@ -60,8 +63,10 @@ export const useProjectStore = create<ProjectState>((set) => ({
         const currentList = Array.isArray(state.projects)
             ? state.projects.filter((p): p is Project => Boolean(p && typeof p === 'object' && p.id))
             : [];
+        const newProjects = currentList.filter(p => p.id !== id);
+        setLocalProjects(newProjects);
         return {
-            projects: currentList.filter(p => p.id !== id),
+            projects: newProjects,
             currentProject: state.currentProject?.id === id ? null : state.currentProject
         };
     })

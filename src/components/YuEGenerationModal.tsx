@@ -105,21 +105,33 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
     const modelPollingRef = useRef<any>(null);
     const timerIntervalRef = useRef<any>(null);
 
+    // Sanitiza a letra para o motor neural YuE2, eliminando colchetes órfãos
+    const sanitizeYuELyrics = (text: string): string => {
+        if (!text) return '';
+        return text
+            .split(/\r?\n/)
+            .filter(line => {
+                const t = line.trim();
+                return t !== ']' && t !== '[' && t !== '[]' && t !== ']]' && t !== '[[';
+            })
+            .map(line => line.replace(/^\s*\]+\s*/, ''))
+            .join('\n')
+            .trim();
+    };
+
     // Sincroniza letra e estilo a partir do prompt estruturado
     const syncFromStructuredPrompt = () => {
         const fullStructured = (structuredPrompt && structuredPrompt.trim()) || (initialLyrics && initialLyrics.trim());
         if (!fullStructured) return;
 
-        // O que está configurado no prompt final vai DIRETO para a área de letra e estrutura musical, 100% preservado
-        setLyrics(fullStructured);
+        const parsed = parseStructuredPrompt(fullStructured);
+        // Preserva o prompt estruturado integralmente como compilado no editor
+        setLyrics(sanitizeYuELyrics(fullStructured));
 
         if (initialStyle && initialStyle.trim().length > 0) {
             setStyle(initialStyle);
-        } else {
-            const parsed = parseStructuredPrompt(fullStructured);
-            if (parsed.styleText && parsed.styleText.trim().length > 0) {
-                setStyle(parsed.styleText);
-            }
+        } else if (parsed.styleText && parsed.styleText.trim().length > 0) {
+            setStyle(parsed.styleText);
         }
     };
 
@@ -128,19 +140,18 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
         if (isOpen) {
             const fullStructured = (structuredPrompt && structuredPrompt.trim()) || (initialLyrics && initialLyrics.trim());
             if (fullStructured) {
-                // O prompt final completo vai DIRETO para a área de geração musical
-                setLyrics(fullStructured);
-            } else if (initialLyrics) {
-                setLyrics(initialLyrics);
-            }
-
-            if (initialStyle && initialStyle.trim().length > 0) {
-                setStyle(initialStyle);
-            } else if (fullStructured) {
                 const parsed = parseStructuredPrompt(fullStructured);
-                if (parsed.styleText && parsed.styleText.trim().length > 0) {
+                // Carrega o prompt estruturado integralmente exatamente como gerado e exibido no painel
+                setLyrics(sanitizeYuELyrics(fullStructured));
+
+                if (initialStyle && initialStyle.trim().length > 0) {
+                    setStyle(initialStyle);
+                } else if (parsed.styleText && parsed.styleText.trim().length > 0) {
                     setStyle(parsed.styleText);
                 }
+            } else if (initialLyrics) {
+                setLyrics(sanitizeYuELyrics(initialLyrics));
+                if (initialStyle) setStyle(initialStyle);
             }
             verifyConnection();
         } else {
@@ -152,8 +163,9 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
 
     // Keep inputs updated when parent values change
     useEffect(() => {
-        if (initialLyrics) setLyrics(initialLyrics);
-    }, [initialLyrics]);
+        const full = (structuredPrompt && structuredPrompt.trim()) || (initialLyrics && initialLyrics.trim());
+        if (full) setLyrics(sanitizeYuELyrics(full));
+    }, [initialLyrics, structuredPrompt]);
 
     useEffect(() => {
         if (initialStyle) setStyle(initialStyle);
@@ -346,8 +358,9 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
 
         try {
             const parsedSeed = seed.trim() ? parseInt(seed.trim()) : undefined;
+            const cleanLyrics = sanitizeYuELyrics(lyrics.trim());
             const res = await generateMusicWithYuE2({
-                lyrics: lyrics.trim(),
+                lyrics: cleanLyrics,
                 style: style.trim(),
                 durationSeconds,
                 modelMode,
@@ -610,7 +623,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 <div>
                                     <p className="font-semibold text-white">Modelos Neurais YuE2 3B não instalados (~4.6 GB)</p>
                                     <p className="text-[11px] text-amber-200/80">
-                                        Baixe os pesos oficiais para sintetizar músicas localmente sem necessidade do Maestro aberto.
+                                        Baixe os pesos oficiais para sintetizar músicas localmente no IAPLAY Studio.
                                     </p>
                                 </div>
                             </div>

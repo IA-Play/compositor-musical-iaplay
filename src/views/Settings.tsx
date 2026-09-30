@@ -7,6 +7,7 @@ import { User, Key, Save, Eye, EyeOff, ExternalLink, Shield, Music, Radio } from
 import { useModal } from '../components/ModalProvider';
 import { fetchInstalledOllamaModels, OllamaModelInfo, POPULAR_OLLAMA_MODELS } from '../services/ollamaService';
 import { checkMaestroStatus, detectMaestroEndpoint, saveMaestroEndpoint } from '../services/maestroService';
+import { NVIDIA_FREE_MODELS } from '../services/aiService';
 
 export const Settings: React.FC = () => {
     const { user, updateProfile, updateApiKeys, refreshProfile } = useAuth();
@@ -28,6 +29,8 @@ export const Settings: React.FC = () => {
         groq: user?.groqApiKey || '',
         cerebras: user?.cerebrasApiKey || '',
         openrouter: user?.openrouterApiKey || '',
+        nvidia: user?.nvidiaApiKey || '',
+        nvidiaModel: user?.nvidiaModel || localStorage.getItem('iaplay_nvidia_model') || 'nvidia/llama-3.1-nemotron-70b-instruct',
         mistral: user?.mistralApiKey || '',
         together: user?.togetherApiKey || '',
         ollamaUrl: user?.ollamaUrl || 'http://localhost:11434',
@@ -68,6 +71,8 @@ export const Settings: React.FC = () => {
                 groq: user.groqApiKey || '',
                 cerebras: user.cerebrasApiKey || '',
                 openrouter: user.openrouterApiKey || '',
+                nvidia: user.nvidiaApiKey || '',
+                nvidiaModel: user.nvidiaModel || localStorage.getItem('iaplay_nvidia_model') || 'nvidia/llama-3.1-nemotron-70b-instruct',
                 mistral: user.mistralApiKey || '',
                 together: user.togetherApiKey || '',
                 ollamaUrl: user.ollamaUrl || 'http://localhost:11434',
@@ -76,7 +81,7 @@ export const Settings: React.FC = () => {
             });
             autoFetchOllama(user.ollamaUrl);
         }
-    }, [user?.id, user?.googleApiKey, user?.openaiApiKey, user?.groqApiKey, user?.cerebrasApiKey, user?.openrouterApiKey, user?.mistralApiKey, user?.togetherApiKey, user?.ollamaUrl, user?.ollamaModel, user?.maestroUrl]);
+    }, [user?.id, user?.googleApiKey, user?.openaiApiKey, user?.groqApiKey, user?.cerebrasApiKey, user?.openrouterApiKey, user?.nvidiaApiKey, user?.nvidiaModel, user?.mistralApiKey, user?.togetherApiKey, user?.ollamaUrl, user?.ollamaModel, user?.maestroUrl]);
 
     const handleSaveProfile = async () => {
         setIsSaving(true);
@@ -97,10 +102,10 @@ export const Settings: React.FC = () => {
         try {
             const st = await checkMaestroStatus(keys.maestroUrl);
             if (st.online) {
-                setMaestroTestStatus(`✅ Conectado com sucesso ao Maestro em ${st.endpoint}! YuE2 pronto para gerar músicas.`);
+                setMaestroTestStatus(`✅ Conectado com sucesso ao IAPLAY Studio em ${st.endpoint}! YuE2 pronto para gerar músicas.`);
                 saveMaestroEndpoint(st.endpoint);
             } else {
-                setMaestroTestStatus(`❌ Não foi possível conectar ao Maestro em ${keys.maestroUrl}. Certifique-se de que o Maestro está aberto no Pinokio.`);
+                setMaestroTestStatus(`❌ Não foi possível conectar ao IAPLAY Studio em ${keys.maestroUrl}. Certifique-se de que o IAPLAY Studio está aberto no Pinokio.`);
             }
         } catch (e: any) {
             setMaestroTestStatus(`❌ Erro ao testar conexão: ${e.message}`);
@@ -117,9 +122,9 @@ export const Settings: React.FC = () => {
             if (res.ok) {
                 setKeys(k => ({ ...k, maestroUrl: res.endpoint }));
                 saveMaestroEndpoint(res.endpoint);
-                setMaestroTestStatus(`🎯 Maestro detectado e conectado em ${res.endpoint}!`);
+                setMaestroTestStatus(`🎯 IAPLAY Studio detectado e conectado em ${res.endpoint}!`);
             } else {
-                setMaestroTestStatus(`⚠️ Nenhuma instância do Maestro encontrada nas portas locais comuns. Verifique se ele está iniciado no Pinokio.`);
+                setMaestroTestStatus(`⚠️ Nenhuma instância do IAPLAY Studio encontrada nas portas locais comuns. Verifique se ele está iniciado no Pinokio.`);
             }
         } catch (e: any) {
             setMaestroTestStatus(`❌ Erro na detecção: ${e.message}`);
@@ -164,12 +169,15 @@ export const Settings: React.FC = () => {
                 groq: keys.groq,
                 cerebras: keys.cerebras,
                 openrouter: keys.openrouter,
+                nvidia: keys.nvidia,
+                nvidiaModel: keys.nvidiaModel,
                 mistral: keys.mistral,
                 together: keys.together,
                 ollamaUrl: keys.ollamaUrl,
                 ollamaModel: keys.ollamaModel,
                 maestroUrl: keys.maestroUrl
             });
+            localStorage.setItem('iaplay_nvidia_model', keys.nvidiaModel);
             await showAlert("Configurações e Chaves de IA salvas com sucesso!");
         } catch (e) {
             console.error("Save keys error:", e);
@@ -307,7 +315,7 @@ export const Settings: React.FC = () => {
                                             Suas chaves são salvas localmente no seu navegador e utilizadas em chamadas diretas para os provedores de IA.
                                         </p>
                                         <p className="text-zinc-400">
-                                            💡 Obtenha chaves gratuitas em <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Google AI Studio <ExternalLink className="w-3 h-3" /></a>, <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Groq Console <ExternalLink className="w-3 h-3" /></a> ou <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">OpenRouter <ExternalLink className="w-3 h-3" /></a>.
+                                            💡 Obtenha chaves gratuitas em <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Google AI Studio <ExternalLink className="w-3 h-3" /></a>, <a href="https://build.nvidia.com/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">NVIDIA NIM <ExternalLink className="w-3 h-3" /></a>, <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Groq Console <ExternalLink className="w-3 h-3" /></a> ou <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">OpenRouter <ExternalLink className="w-3 h-3" /></a>.
                                         </p>
                                     </div>
                                 </div>
@@ -438,7 +446,7 @@ export const Settings: React.FC = () => {
                                         </p>
                                     </div>
 
-                                    {/* Integração Maestro & YuE2 (Local / Pinokio) */}
+                                    {/* Integração IAPLAY Studio & YuE2 (Local / Pinokio) */}
                                     <div className="p-4 bg-gradient-to-br from-primary/10 via-orange-950/20 to-zinc-900 border border-primary/30 rounded-2xl space-y-4">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
@@ -446,7 +454,7 @@ export const Settings: React.FC = () => {
                                                     <Music className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <span className="text-sm font-bold text-white block">Maestro · YuE2 (Geração de Áudio Local)</span>
+                                                    <span className="text-sm font-bold text-white block">IAPLAY Studio · YuE2 (Geração de Áudio Local)</span>
                                                     <span className="text-[10px] text-zinc-400">Síntese neural de voz e instrumentos em estéreo 48kHz (CC BY-NC 4.0)</span>
                                                 </div>
                                             </div>
@@ -457,7 +465,7 @@ export const Settings: React.FC = () => {
 
                                         <div>
                                             <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">
-                                                URL do Servidor Maestro
+                                                URL do Servidor IAPLAY Studio
                                             </label>
                                             <div className="flex gap-2">
                                                 <input
@@ -494,7 +502,7 @@ export const Settings: React.FC = () => {
                                         )}
 
                                         <p className="text-[10px] text-zinc-400 leading-relaxed">
-                                            💡 Integração com a pasta instalada no Pinokio: <code className="text-zinc-300 font-mono">H:\pinokio\api\Maestro.git</code>. Quando o Maestro estiver rodando, você pode gerar músicas completas com 1 clique direto no IAPLAY!
+                                            💡 Integração com o motor local IAPLAY Studio (YuE2). Quando o IAPLAY Studio estiver rodando, você pode gerar músicas completas com 1 clique direto no IAPLAY!
                                         </p>
                                     </div>
 
@@ -532,6 +540,54 @@ export const Settings: React.FC = () => {
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
                                         <p className="text-[10px] text-zinc-500 mt-1">Modelos: Llama 3.3 70B, Llama 3.1 8B (até 2.000 tokens/segundo no Tier Gratuito).</p>
+                                    </div>
+
+                                    <div>
+                                        <div className="flex items-center justify-between mb-2">
+                                            <label className="text-xs font-bold text-zinc-500 uppercase">🟢 NVIDIA NIM API Keys (Grátis - Ultra-Rápido)</label>
+                                            <a
+                                                href="https://build.nvidia.com/settings/api-keys"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-bold"
+                                            >
+                                                Criar Chave Grátis (build.nvidia.com) <ExternalLink className="w-2.5 h-2.5" />
+                                            </a>
+                                        </div>
+                                        <textarea
+                                            rows={2}
+                                            value={keys.nvidia}
+                                            onChange={(e) => setKeys({ ...keys, nvidia: e.target.value })}
+                                            placeholder="nvapi-..., uma por linha (build.nvidia.com)"
+                                            className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
+                                        />
+                                        <p className="text-[10px] text-zinc-500 mt-1">1.000 créditos gratuitos da NVIDIA renováveis sem necessidade de cartão de crédito.</p>
+
+                                        <div className="mt-3 bg-zinc-900/60 p-3 rounded-xl border border-white/5 space-y-2">
+                                            <label className="block text-[11px] font-bold text-zinc-300 uppercase">
+                                                Modelo Padrão da NVIDIA:
+                                            </label>
+                                            <select
+                                                value={keys.nvidiaModel}
+                                                onChange={(e) => setKeys({ ...keys, nvidiaModel: e.target.value })}
+                                                className="w-full bg-black border border-emerald-500/40 rounded-xl p-2.5 text-xs text-white focus:border-emerald-500 outline-none"
+                                            >
+                                                {NVIDIA_FREE_MODELS.map(m => (
+                                                    <option key={m.id} value={m.id}>
+                                                        {m.name} {m.badge ? `• [${m.badge}]` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {(() => {
+                                                const current = NVIDIA_FREE_MODELS.find(m => m.id === keys.nvidiaModel);
+                                                if (!current) return null;
+                                                return (
+                                                    <p className="text-[10px] text-zinc-400 leading-relaxed bg-black/40 p-2 rounded-lg border border-white/5">
+                                                        <span className="text-emerald-400 font-bold">{current.badge}</span>: {current.description}
+                                                    </p>
+                                                );
+                                            })()}
+                                        </div>
                                     </div>
 
                                     <div>

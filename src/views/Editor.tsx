@@ -4,7 +4,9 @@ import { Navbar } from '../components/Navbar';
 import { Project, AIProvider, MusicType, MusicPlatform, AudioQuality, DetailedInstruction, YuETrack } from '../types';
 import { ArsenalModal } from '../components/Arsenal';
 import { YuEGenerationModal } from '../components/YuEGenerationModal';
+import { SectionRulesModal } from '../components/SectionRulesModal';
 import { checkMaestroStatus } from '../services/maestroService';
+import { saveProject } from '../services/projectService';
 import {
     generateLyrics,
     optimizeLyrics,
@@ -15,7 +17,8 @@ import {
     fetchArtistSongs,
     hasKeyForProvider,
     getProviderKeyUrl,
-    parseStructuredPrompt
+    parseStructuredPrompt,
+    NVIDIA_FREE_MODELS
 } from '../services/aiService';
 import {
     ArrowLeft, Save, Copy, Loader2,
@@ -36,7 +39,7 @@ import { useAIStream } from '../services/useAIStream';
 interface EditorProps {
     project: Project;
     setProject: (p: Project | ((prev: Project) => Project)) => void;
-    onSave: () => void;
+    onSave: (p?: Project) => void;
     saveStatus: 'saved' | 'saving' | 'error' | 'unsaved';
 }
 
@@ -65,6 +68,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
             return saved as AIProvider;
         }
         if (hasKeyForProvider(AIProvider.GOOGLE)) return AIProvider.GOOGLE;
+        if (hasKeyForProvider(AIProvider.NVIDIA)) return AIProvider.NVIDIA;
         if (hasKeyForProvider(AIProvider.GROQ)) return AIProvider.GROQ;
         if (hasKeyForProvider(AIProvider.OPENROUTER)) return AIProvider.OPENROUTER;
         return AIProvider.GOOGLE;
@@ -73,7 +77,13 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
     const [quickApiKey, setQuickApiKey] = useState("");
     const [quickKeySaved, setQuickKeySaved] = useState(false);
     const [showYuEModal, setShowYuEModal] = useState(false);
+    const [showSectionRulesModal, setShowSectionRulesModal] = useState(false);
     const [maestroOnline, setMaestroOnline] = useState<boolean | null>(null);
+
+    const hasStructuredPrompt = Boolean(
+        (project.promptFinal && project.promptFinal.trim().length > 10) ||
+        (generatedPrompt && generatedPrompt.trim().length > 10)
+    );
 
     useEffect(() => {
         checkMaestroStatus().then(res => setMaestroOnline(res.online)).catch(() => setMaestroOnline(false));
@@ -93,6 +103,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
             [AIProvider.GOOGLE]: 'google',
             [AIProvider.GROQ]: 'groq',
             [AIProvider.OPENROUTER]: 'openrouter',
+            [AIProvider.NVIDIA]: 'nvidia',
             [AIProvider.CEREBRAS]: 'cerebras',
             [AIProvider.OPENAI]: 'openai',
             [AIProvider.MISTRAL]: 'mistral',
@@ -131,6 +142,17 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
     useEffect(() => {
         refreshOllama();
     }, [aiProvider]);
+
+    // NVIDIA NIM Model Selection
+    const [selectedNvidiaModel, setSelectedNvidiaModel] = useState<string>(
+        () => user?.nvidiaModel || localStorage.getItem('iaplay_nvidia_model') || 'nvidia/llama-3.1-nemotron-70b-instruct'
+    );
+
+    const handleSelectNvidiaModel = (modelId: string) => {
+        setSelectedNvidiaModel(modelId);
+        localStorage.setItem('iaplay_nvidia_model', modelId);
+        updateApiKeys({ nvidiaModel: modelId });
+    };
 
     const [sysSettings, setSysSettings] = useState(getSystemSettings());
 
@@ -363,13 +385,29 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
     };
 
     const handleGenerateStructure = async () => {
+        // Se houver texto digitado no input de estilo que ainda não foi adicionado
+        let currentStyles = [...(project.styles || [])];
+        if (styleInput && styleInput.trim()) {
+            const trimmed = styleInput.trim();
+            if (!currentStyles.some(s => s.toLowerCase() === trimmed.toLowerCase())) {
+                currentStyles.push(trimmed);
+            }
+            setStyleInput('');
+        }
+
+        const projectToStructure = {
+            ...project,
+            styles: currentStyles
+        };
+        setProject(projectToStructure);
+
         await runWithFailover(t('messages.prompt_engineering'), async () => {
-            const result = await structureSunoPrompt(project, aiProvider);
+            const result = await structureSunoPrompt(projectToStructure, aiProvider);
             setGeneratedPrompt(result);
 
             // Parsing inteligente do resultado estruturado (letra e estilo)
             const parsed = parseStructuredPrompt(result);
-            const targetPlatformName = project.targetPlatform || 'Suno';
+            const targetPlatformName = projectToStructure.targetPlatform || 'Suno';
             const timestamp = new Date().toLocaleTimeString();
 
             setProject(prev => {
@@ -398,10 +436,11 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
                 const updatedExtracted = parsed.tags.length > 0
                     ? parsed.tags
-                    : prev.extractedStyles;
+                    : (currentStyles.length > 0 ? currentStyles : prev.extractedStyles);
 
                 return {
                     ...prev,
+                    styles: currentStyles.length > 0 ? currentStyles : prev.styles,
                     promptFinal: result,
                     promptHistory: pHistory,
                     lyrics: hasNewStructuredLyrics ? parsed.lyricsText : prev.lyrics,
@@ -457,6 +496,38 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
         });
     };
 
+    const handleSaveSectionRules = (newPromptFinal: string) => {
+        const targetPlatformName = project.targetPlatform || 'Suno';
+        const timestamp = new Date().toLocaleTimeString();
+        const pHistory = [...(project.promptHistory || [])];
+        if (project.promptFinal && project.promptFinal.trim()) {
+            pHistory.unshift({
+                label: `Regras de Seção · ${timestamp}`,
+                value: project.promptFinal,
+                at: new Date().toISOString()
+            });
+            if (pHistory.length > 20) pHistory.length = 20;
+        }
+
+        const parsed = parseStructuredPrompt(newPromptFinal);
+        const hasNewStructuredLyrics = Boolean(parsed.lyricsText && parsed.lyricsText.length > 10);
+
+        const updatedProject: Project = {
+            ...project,
+            promptFinal: newPromptFinal,
+            promptHistory: pHistory,
+            lyrics: hasNewStructuredLyrics ? parsed.lyricsText : project.lyrics,
+            stylePrompt: parsed.styleText || project.stylePrompt,
+            extractedStyles: parsed.tags.length > 0 ? parsed.tags : project.extractedStyles
+        };
+
+        setProject(updatedProject);
+        setGeneratedPrompt(newPromptFinal);
+        saveProject(updatedProject);
+        onSave(updatedProject);
+        showAlert("Regras de seção e efeitos vocais aplicados com sucesso ao Prompt Final!");
+    };
+
     // --- MELHORIA 4: Presets de arsenal (salvar/carregar/reutilizar) ---
     const [showPresets, setShowPresets] = useState(false);
     const [presetName, setPresetName] = useState('');
@@ -505,10 +576,10 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
     const handleExtractTags = async () => {
         // Prioridade máxima: Usar o prompt estruturado completo (project.promptFinal) se disponível
-        const hasStructuredPrompt = project.promptFinal && project.promptFinal.trim().length > 20;
+        const hasPrompt = project.promptFinal && project.promptFinal.trim().length > 20;
         
         let fullPromptContext = "";
-        if (hasStructuredPrompt) {
+        if (hasPrompt) {
             fullPromptContext = project.promptFinal.trim();
         } else if (project.lyrics && project.lyrics.trim().length > 0) {
             const userStyles = project.styles || [];
@@ -629,7 +700,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         <span className="font-bold text-sm text-white truncate max-w-[200px]">{project.title}</span>
                     </div>
                     <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary/15 text-primary border border-primary/30">
-                        {project.targetPlatform || MusicPlatform.SUNO}
+                        IAPLAY Studio (YuE2)
                     </span>
                 </div>
 
@@ -701,6 +772,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             >
                                 <option value={AIProvider.GOOGLE}>Google Gemini {hasKeyForProvider(AIProvider.GOOGLE) ? '✅' : '🔑'}</option>
                                 <option value={AIProvider.OLLAMA}>🦙 Ollama Local {isOllamaOnline ? '✅' : '(Offline ❌)'}</option>
+                                <option value={AIProvider.NVIDIA}>🟢 NVIDIA NIM {hasKeyForProvider(AIProvider.NVIDIA) ? '✅' : '(Grátis 🔑)'}</option>
                                 <option value={AIProvider.GROQ}>⚡ Groq (Llama 3.3) {hasKeyForProvider(AIProvider.GROQ) ? '✅' : '(Grátis 🔑)'}</option>
                                 <option value={AIProvider.CEREBRAS}>🚀 Cerebras Cloud {hasKeyForProvider(AIProvider.CEREBRAS) ? '✅' : '(Grátis 🔑)'}</option>
                                 <option value={AIProvider.OPENROUTER}>🌐 OpenRouter {hasKeyForProvider(AIProvider.OPENROUTER) ? '✅' : '(Grátis 🔑)'}</option>
@@ -806,6 +878,52 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                             </p>
                                         </div>
                                     )}
+                                </div>
+                            )}
+
+                            {/* NVIDIA NIM MODEL PICKER */}
+                            {aiProvider === AIProvider.NVIDIA && (
+                                <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-xl space-y-2.5 animate-in fade-in">
+                                    <div className="flex items-center justify-between text-[11px] font-bold">
+                                        <span className="flex items-center gap-1.5 text-emerald-400">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                            NVIDIA NIM (Modelos Gratuitos)
+                                        </span>
+                                        <a
+                                            href="https://build.nvidia.com"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1"
+                                        >
+                                            build.nvidia.com <ExternalLink className="w-2.5 h-2.5" />
+                                        </a>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">
+                                            Modelo Ativo:
+                                        </label>
+                                        <select
+                                            value={selectedNvidiaModel}
+                                            onChange={(e) => handleSelectNvidiaModel(e.target.value)}
+                                            className="w-full bg-black border border-emerald-500/40 rounded-lg p-2 text-xs text-white focus:border-emerald-500 outline-none"
+                                        >
+                                            {NVIDIA_FREE_MODELS.map(m => (
+                                                <option key={m.id} value={m.id}>
+                                                    {m.name} {m.badge ? `• [${m.badge}]` : ''}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        {(() => {
+                                            const current = NVIDIA_FREE_MODELS.find(m => m.id === selectedNvidiaModel);
+                                            if (!current) return null;
+                                            return (
+                                                <p className="text-[10px] text-zinc-400 mt-1.5 leading-relaxed bg-black/40 p-2 rounded-lg border border-white/5">
+                                                    <span className="text-emerald-400 font-bold">{current.badge}</span>: {current.description}
+                                                </p>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
                             )}
 
@@ -969,49 +1087,10 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-3">{t('editor.composition_editor')}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                {project.lyricsHistory && project.lyricsHistory.length > 0 && (
-                                    <select
-                                        onChange={(e) => { if (e.target.value !== '') restoreFromHistory('lyrics', parseInt(e.target.value)); e.target.value = ''; }}
-                                        defaultValue=""
-                                        className="bg-black/60 border border-white/10 rounded-lg px-2 py-1 text-[10px] text-zinc-300 outline-none hover:border-white/30"
-                                        title="Histórico de versões da letra"
-                                    >
-                                        <option value="" disabled>Histórico de Letras ({project.lyricsHistory.length})</option>
-                                        {project.lyricsHistory.map((h, i) => (
-                                            <option key={i} value={i}>{h.label}</option>
-                                        ))}
-                                    </select>
-                                )}
                                 <button onClick={() => copyToClipboard(project.lyrics)} className="mr-2 text-zinc-500 hover:text-white transition-colors" title="Copiar Letra">
                                     <Copy className="w-3.5 h-3.5" />
                                 </button>
                             </div>
-                        </div>
-
-                        {/* Quick Metatag Toolbar */}
-                        <div className="bg-zinc-900/90 border-x border-b border-white/5 px-3 py-1.5 flex flex-wrap items-center gap-1.5">
-                            <span className="text-[9px] font-bold text-zinc-500 uppercase mr-1">Metatags:</span>
-                            {[
-                                '[Intro]',
-                                '[Verse 1]',
-                                '[Verse 2]',
-                                '[Pre-Chorus]',
-                                '[Chorus]',
-                                '[Bridge]',
-                                '[Drop]',
-                                '[Guitar Solo]',
-                                '[Outro]',
-                                '[End]'
-                            ].map(tag => (
-                                <button
-                                    key={tag}
-                                    type="button"
-                                    onClick={() => insertTag(tag)}
-                                    className="px-2 py-0.5 bg-black/50 hover:bg-primary/20 border border-white/10 hover:border-primary/40 rounded text-[10px] font-mono text-zinc-300 hover:text-white transition-colors"
-                                >
-                                    {tag}
-                                </button>
-                            ))}
                         </div>
 
                         {/* Text Area */}
@@ -1033,61 +1112,22 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                 {/* 3. RIGHT SIDEBAR - PROMPT & OUTPUT (320px) */}
                 <div className={`${activeTab === 'output' ? 'flex' : 'hidden'} md:flex w-full md:w-[320px] border-l border-white/10 bg-zinc-900 overflow-y-auto custom-scrollbar flex-col p-5 gap-5 shrink-0`}>
 
-                    {/* Selecao de plataforma (Suno/Udio/Mureka/Maestro) */}
-                    <div>
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">Plataforma de Destino</label>
-                        <div className="grid grid-cols-2 gap-1.5">
-                            {[
-                                { id: MusicPlatform.SUNO, label: 'Suno.ai' },
-                                { id: MusicPlatform.UDIO, label: 'Udio' },
-                                { id: MusicPlatform.MUREKA, label: 'Mureka' },
-                                { id: MusicPlatform.MAESTRO, label: 'Maestro (YuE2)' }
-                            ].map(p => (
-                                <button
-                                    key={p.id}
-                                    type="button"
-                                    onClick={() => changePlatform(p.id as MusicPlatform)}
-                                    className={'py-2 px-1.5 rounded-lg text-[10px] font-bold transition-all border text-center truncate ' + (
-                                        project.targetPlatform === p.id
-                                            ? 'bg-primary text-white border-primary shadow-lg shadow-primary/30'
-                                            : 'bg-zinc-900 text-zinc-400 border-white/10 hover:border-white/30'
-                                    )}
-                                >
-                                    {p.label}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
                     {/* BOTÃO PRINCIPAL DE ESTRUTURAÇÃO */}
                     <button
                         type="button"
                         onClick={handleGenerateStructure}
                         className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl font-bold text-white shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-xs uppercase tracking-wider"
                     >
-                        <Cpu className="w-4 h-4" /> {t('editor.structure_final') || 'Estruturar Prompt'}
+                        <Cpu className="w-4 h-4" /> {t('editor.structure_final') || 'Gerar Prompt Final'}
                     </button>
 
                     {/* Prompt Output */}
                     <div data-tour="structured-prompt" className="flex-1 flex flex-col min-h-[260px]">
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
-                                {`Prompt Estruturado (${project.targetPlatform || 'Suno.ai'})`}
+                                Prompt Estruturado (IAPLAY Studio)
                             </label>
                             <div className="flex items-center gap-1.5">
-                                {project.promptHistory && project.promptHistory.length > 0 && (
-                                    <select
-                                        onChange={(e) => { if (e.target.value !== '') restoreFromHistory('promptFinal', parseInt(e.target.value)); e.target.value = ''; }}
-                                        defaultValue=""
-                                        className="bg-black/60 border border-white/10 rounded-lg px-2 py-0.5 text-[9px] text-zinc-400 outline-none max-w-[120px]"
-                                        title="Histórico de versões do prompt"
-                                    >
-                                        <option value="" disabled>Versões ({project.promptHistory.length})</option>
-                                        {project.promptHistory.map((h, i) => (
-                                            <option key={i} value={i}>{h.label}</option>
-                                        ))}
-                                    </select>
-                                )}
                                 <button onClick={() => copyToClipboard(project.promptFinal || generatedPrompt)} className="text-zinc-500 hover:text-white transition-colors" title="Copiar Prompt">
                                     <Copy className="w-3.5 h-3.5" />
                                 </button>
@@ -1208,48 +1248,86 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
                     {/* Advanced Tools */}
                     <div>
-                        <label className="text-[10px] font-bold text-zinc-500 uppercase mb-2 block">{t('editor.tools')}</label>
-                        <button className="w-full py-2 bg-zinc-800 border border-white/5 rounded-lg text-xs text-zinc-300 flex items-center justify-center gap-2 hover:bg-zinc-700 mb-2">
-                            <MoreHorizontal className="w-3 h-3" /> {t('editor.detailed_instructions')}
-                        </button>
-                        <input
-                            className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs text-white placeholder-zinc-700"
-                            placeholder="Ex: Deixe mais agressivo, Salmos 23..."
-                            value={customInstruction}
-                            onChange={(e) => setCustomInstruction(e.target.value)}
-                        />
-                    </div>
+                        <div className="flex items-center justify-between mb-2">
+                            <label className="text-[10px] font-bold text-zinc-500 uppercase block">{t('editor.tools')}</label>
+                            {hasStructuredPrompt ? (
+                                <span className="text-[9px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
+                                    Disponível
+                                </span>
+                            ) : (
+                                <span className="text-[9px] font-medium text-zinc-500 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-full">
+                                    Requer Prompt Final
+                                </span>
+                            )}
+                        </div>
 
-                    {project.targetPlatform === MusicPlatform.MAESTRO ? (
-                        <button
-                            type="button"
-                            onClick={() => setShowYuEModal(true)}
-                            className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-primary/30 mt-auto transition-colors text-white shadow-lg shadow-primary/25"
-                        >
-                            <Music className="w-4 h-4 text-white" />
-                            Produzir Música no YuE2
-                        </button>
-                    ) : (
-                        <button
+                        <button 
                             type="button"
                             onClick={() => {
-                                const url = project.targetPlatform === MusicPlatform.UDIO 
-                                    ? 'https://udio.com' 
-                                    : project.targetPlatform === MusicPlatform.MUREKA 
-                                        ? 'https://mureka.ai' 
-                                        : 'https://suno.com';
-                                window.open(url, '_blank');
+                                if (hasStructuredPrompt) {
+                                    setShowSectionRulesModal(true);
+                                } else {
+                                    showAlert("⚠️ O prompt final da música ainda não foi estruturado!\n\nClique no botão laranja 'GERAR PROMPT FINAL' primeiro para criar a estrutura das seções. Depois você poderá personalizar as regras, voz rasgada, melismas e efeitos de cada parte da música.");
+                                }
                             }}
-                            className="w-full py-3.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-white/5 mt-auto transition-colors text-zinc-200"
+                            className={`w-full py-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-2 transition-all mb-2 ${
+                                hasStructuredPrompt
+                                    ? 'bg-zinc-800 hover:bg-primary/20 text-white border border-primary/40 hover:border-primary shadow-sm shadow-primary/10 cursor-pointer'
+                                    : 'bg-zinc-900 border border-white/5 text-zinc-500 hover:text-zinc-400 hover:bg-zinc-800/60'
+                            }`}
+                            title={hasStructuredPrompt ? "Editar regras e efeitos vocais por seção" : "Gere o prompt final primeiro para liberar"}
                         >
-                            <Share2 className="w-3.5 h-3.5 text-primary" />
-                            {project.targetPlatform === MusicPlatform.UDIO 
-                                ? 'Abrir Udio' 
-                                : project.targetPlatform === MusicPlatform.MUREKA 
-                                    ? 'Abrir Mureka.ai' 
-                                    : 'Abrir Suno.ai'}
+                            <Sliders className={`w-3.5 h-3.5 ${hasStructuredPrompt ? 'text-primary' : 'text-zinc-500'}`} />
+                            {t('editor.detailed_instructions')}
+                            {hasStructuredPrompt && (
+                                <span className="text-[10px] text-primary/80 font-normal">
+                                    (Personalizar)
+                                </span>
+                            )}
                         </button>
-                    )}
+
+                        <div className="relative">
+                            <input
+                                className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs text-white placeholder-zinc-700 pr-16"
+                                placeholder="Ex: Deixe mais agressivo, voz rasgada..."
+                                value={customInstruction}
+                                onChange={(e) => setCustomInstruction(e.target.value)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter') {
+                                        if (hasStructuredPrompt) {
+                                            setShowSectionRulesModal(true);
+                                        } else {
+                                            showAlert("⚠️ O prompt final da música ainda não foi estruturado. Clique em 'GERAR PROMPT FINAL' primeiro.");
+                                        }
+                                    }
+                                }}
+                            />
+                            {customInstruction.trim() && (
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (hasStructuredPrompt) {
+                                            setShowSectionRulesModal(true);
+                                        } else {
+                                            showAlert("⚠️ O prompt final da música ainda não foi estruturado. Clique em 'GERAR PROMPT FINAL' primeiro.");
+                                        }
+                                    }}
+                                    className="absolute right-1.5 top-1.5 px-2 py-0.5 bg-primary/20 hover:bg-primary text-primary hover:text-white rounded text-[10px] font-bold transition-colors"
+                                >
+                                    Abrir
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <button
+                        type="button"
+                        onClick={() => setShowYuEModal(true)}
+                        className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-primary/30 mt-auto transition-colors text-white shadow-lg shadow-primary/25"
+                    >
+                        <Music className="w-4 h-4 text-white" />
+                        Produzir Música no YuE2 (IAPLAY Studio)
+                    </button>
                 </div>
 
                 {/* Mobile Navigation Tabs */}
@@ -1273,7 +1351,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all ${activeTab === 'output' ? 'bg-primary text-white shadow-lg shadow-primary/40' : 'bg-white/5 text-zinc-400'}`}
                     >
                         <Cpu className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase">Suno/Udio</span>
+                        <span className="text-[10px] font-bold uppercase">Prompt Final</span>
                     </button>
                 </div>
 
@@ -1394,6 +1472,15 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                     </div>
                 </div>
             )}
+
+            {/* Modal de Regras de Seção & Efeitos Vocais */}
+            <SectionRulesModal
+                isOpen={showSectionRulesModal}
+                onClose={() => setShowSectionRulesModal(false)}
+                promptFinal={project.promptFinal || generatedPrompt}
+                onSave={handleSaveSectionRules}
+                targetPlatform={project.targetPlatform}
+            />
 
             <YuEGenerationModal
                 isOpen={showYuEModal}

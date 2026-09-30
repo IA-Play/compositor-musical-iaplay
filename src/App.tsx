@@ -94,12 +94,13 @@ const EditorWrapper = () => {
     }
   };
 
-  const handleManualSave = async () => {
-    if (!project) return;
+  const handleManualSave = async (overrideProject?: Project) => {
+    const projToSave = overrideProject || project;
+    if (!projToSave) return;
     try {
-      await saveMutation.mutateAsync(project);
+      await saveMutation.mutateAsync(projToSave);
       // Atualiza o snapshot após salvar com sucesso
-      lastSavedSnapshotRef.current = JSON.stringify(project);
+      lastSavedSnapshotRef.current = JSON.stringify(projToSave);
       setIsDirty(false);
     } catch (e) {
       console.error("Failed to save project", e);

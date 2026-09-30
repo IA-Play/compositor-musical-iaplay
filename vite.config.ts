@@ -11,9 +11,27 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/api/nvidia': {
+        target: 'https://integrate.api.nvidia.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/nvidia/, ''),
+        secure: true,
+        headers: {
+          'Origin': 'https://build.nvidia.com',
+          'Referer': 'https://build.nvidia.com/'
+        }
+      },
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,
+        configure: (proxy) => {
+          proxy.on('error', (err: any, _req, res: any) => {
+            if (err?.code === 'ECONNREFUSED' && res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ offline: true, error: 'Backend PHP opcional offline - operando em modo local' }));
+            }
+          });
+        }
       }
     }
   },

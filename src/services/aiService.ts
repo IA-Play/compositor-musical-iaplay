@@ -8,6 +8,64 @@ import { getSystemSettings } from "./settingsService";
 
 // --- DIRECT CLIENT-SIDE AI GENERATION ENGINE ---
 
+export interface NvidiaModelOption {
+    id: string;
+    name: string;
+    badge: string;
+    description: string;
+}
+
+export const NVIDIA_FREE_MODELS: NvidiaModelOption[] = [
+    {
+        id: 'nvidia/llama-3.1-nemotron-70b-instruct',
+        name: 'Llama 3.1 Nemotron 70B (NVIDIA)',
+        badge: 'Recomendado ⭐',
+        description: 'Otimizado pela NVIDIA, ultra-rápido, raciocínio afiado e gratuito'
+    },
+    {
+        id: 'mistralai/mistral-large-2-instruct',
+        name: 'Mistral Large 2 (123B)',
+        badge: 'Top para Letras ✍️',
+        description: 'Excelente para rimas, métrica poética e português brasileiro natural'
+    },
+    {
+        id: 'nv-mistralai/mistral-nemo-12b-instruct',
+        name: 'Mistral NeMo 12B',
+        badge: 'Ultra Rápido ⚡',
+        description: 'Respostas quase instantâneas com baixo consumo de tokens'
+    },
+    {
+        id: 'mistralai/mixtral-8x22b-v0.1',
+        name: 'Mixtral 8x22B MoE',
+        badge: 'MoE Potente 🧠',
+        description: 'Mistura de especialistas com enorme versatilidade de estilos'
+    },
+    {
+        id: 'deepseek-ai/deepseek-v4.1-flash',
+        name: 'DeepSeek v4.1 Flash',
+        badge: 'Criativo 💡',
+        description: 'Inovador para letras conceituais, metáforas e harmonias'
+    },
+    {
+        id: 'google/gemma-3-12b-it',
+        name: 'Google Gemma 3 12B',
+        badge: 'Google 🌟',
+        description: 'Modelo moderno do Google rodando nos servidores da NVIDIA'
+    },
+    {
+        id: 'nvidia/nemotron-4-340b-instruct',
+        name: 'Nemotron 4 340B',
+        badge: 'Modelo Gigante 👑',
+        description: 'O maior modelo instruído da NVIDIA para composições ricas'
+    },
+    {
+        id: 'meta/llama2-70b',
+        name: 'Meta Llama 2 70B',
+        badge: 'Meta Clássico',
+        description: 'Modelo consagrado para estruturação musical'
+    }
+];
+
 const getStoredUserKeys = () => {
     let keys: Record<string, string> = {
         google: '',
@@ -15,6 +73,8 @@ const getStoredUserKeys = () => {
         groq: '',
         cerebras: '',
         openrouter: '',
+        nvidia: '',
+        nvidiaModel: 'nvidia/llama-3.1-nemotron-70b-instruct',
         mistral: '',
         together: '',
         ollamaUrl: 'http://localhost:11434',
@@ -30,6 +90,8 @@ const getStoredUserKeys = () => {
             keys.groq = parsed.groqApiKey || parsed.groq || parsed.groq_api_key || keys.groq;
             keys.cerebras = parsed.cerebrasApiKey || parsed.cerebras || parsed.cerebras_api_key || keys.cerebras;
             keys.openrouter = parsed.openrouterApiKey || parsed.openrouter || parsed.openrouter_api_key || keys.openrouter;
+            keys.nvidia = parsed.nvidiaApiKey || parsed.nvidia || parsed.nvidia_api_key || keys.nvidia;
+            keys.nvidiaModel = parsed.nvidiaModel || parsed.nvidia_model || localStorage.getItem('iaplay_nvidia_model') || keys.nvidiaModel;
             keys.mistral = parsed.mistralApiKey || parsed.mistral || parsed.mistral_api_key || keys.mistral;
             keys.together = parsed.togetherApiKey || parsed.together || parsed.together_api_key || keys.together;
             keys.ollamaUrl = parsed.ollamaUrl || parsed.ollama_url || keys.ollamaUrl;
@@ -44,6 +106,7 @@ const getStoredUserKeys = () => {
             if (!keys.groq && sys.groqApiKey) keys.groq = sys.groqApiKey;
             if (!keys.openai && sys.openaiApiKey) keys.openai = sys.openaiApiKey;
             if (!keys.openrouter && sys.openrouterApiKey) keys.openrouter = sys.openrouterApiKey;
+            if (!keys.nvidia && sys.nvidiaApiKey) keys.nvidia = sys.nvidiaApiKey;
             if (!keys.cerebras && sys.cerebrasApiKey) keys.cerebras = sys.cerebrasApiKey;
             if (!keys.mistral && sys.mistralApiKey) keys.mistral = sys.mistralApiKey;
             if (!keys.together && sys.togetherApiKey) keys.together = sys.togetherApiKey;
@@ -83,6 +146,8 @@ export const hasKeyForProvider = (provider: AIProvider): boolean => {
             return extractKeys(userKeys.groq).length > 0 || extractKeys(settings.groqApiKey).length > 0;
         case AIProvider.OPENROUTER:
             return extractKeys(userKeys.openrouter).length > 0 || extractKeys(settings.openrouterApiKey).length > 0;
+        case AIProvider.NVIDIA:
+            return extractKeys(userKeys.nvidia).length > 0 || extractKeys(settings.nvidiaApiKey).length > 0;
         case AIProvider.CEREBRAS:
             return extractKeys(userKeys.cerebras).length > 0 || extractKeys(settings.cerebrasApiKey).length > 0;
         case AIProvider.OPENAI:
@@ -106,6 +171,8 @@ export const getProviderKeyUrl = (provider: AIProvider): string => {
             return "https://cloud.cerebras.ai/";
         case AIProvider.OPENROUTER:
             return "https://openrouter.ai/keys";
+        case AIProvider.NVIDIA:
+            return "https://build.nvidia.com/settings/api-keys";
         case AIProvider.OPENAI:
             return "https://platform.openai.com/api-keys";
         case AIProvider.MISTRAL:
@@ -649,6 +716,98 @@ const friendlyApiError = (providerLabel: string, raw: string): string => {
     return `${providerLabel}: ${raw || "erro desconhecido"}`;
 };
 
+// 9. NVIDIA NIM (Multi-layer caller com Relay Local + Proxy Vite + Direct + Timeout de 25s)
+export const callNvidia = async (prompt: string, systemInstruction?: string, modelOverride?: string): Promise<string> => {
+    const userKeys = getStoredUserKeys();
+    const settings = getSystemSettings();
+    const keys = [
+        ...extractKeys(userKeys.nvidia),
+        ...extractKeys(settings.nvidiaApiKey)
+    ];
+
+    if (keys.length === 0) {
+        throw new Error("Nenhuma chave da NVIDIA NIM configurada. Vá em 'Chaves de IA & Ollama' e insira sua chave da NVIDIA.");
+    }
+
+    const preferredModel = (modelOverride || userKeys.nvidiaModel || localStorage.getItem('iaplay_nvidia_model') || 'nvidia/llama-3.1-nemotron-70b-instruct').trim();
+
+    // Modelos ativos verificados na NVIDIA NIM (sem modelos expirados como llama-3.3-70b)
+    const fallbackModels = [
+        preferredModel,
+        'nvidia/llama-3.1-nemotron-70b-instruct',
+        'mistralai/mistral-large-2-instruct',
+        'nv-mistralai/mistral-nemo-12b-instruct',
+        'mistralai/mixtral-8x22b-v0.1',
+        'deepseek-ai/deepseek-v4.1-flash'
+    ];
+    // Remove duplicatas preservando a ordem de prioridade
+    const modelsToTry = Array.from(new Set(fallbackModels));
+
+    // Endpoints candidatos (Relay Python na 42024 -> Proxy Vite -> Direto)
+    const candidateEndpoints = [
+        'http://127.0.0.1:42024/api/v1/ai/nvidia',
+        '/api/nvidia/v1/chat/completions',
+        'https://integrate.api.nvidia.com/v1/chat/completions'
+    ];
+
+    let lastError = "";
+
+    for (const key of keys) {
+        for (const model of modelsToTry) {
+            for (const endpoint of candidateEndpoints) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
+                    const messages: any[] = [];
+                    if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+                    messages.push({ role: 'user', content: prompt });
+
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${key}`
+                        },
+                        body: JSON.stringify({
+                            model,
+                            messages,
+                            temperature: 0.7,
+                            max_tokens: 2048
+                        }),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+
+                    if (!res.ok) {
+                        const errData = await res.json().catch(() => ({}));
+                        lastError = errData?.detail || errData?.error?.message || `HTTP ${res.status}`;
+                        // Se o relay local não estiver respondendo, tenta o próximo endpoint imediatamente
+                        if (endpoint.includes('42024') && (res.status === 404 || res.status === 502)) {
+                            continue;
+                        }
+                        // Se for erro de modelo não encontrado ou aposentado, pula para o próximo modelo
+                        if (res.status === 404 || res.status === 410 || lastError.toLowerCase().includes('model') || lastError.toLowerCase().includes('end of life')) {
+                            break;
+                        }
+                        continue;
+                    }
+
+                    const data = await res.json();
+                    const text = data?.choices?.[0]?.message?.content;
+                    if (text && text.trim().length > 0) {
+                        return text.trim();
+                    }
+                } catch (err: any) {
+                    lastError = err.message || String(err);
+                }
+            }
+        }
+    }
+
+    throw new Error(friendlyApiError("NVIDIA NIM", lastError || "Todas as tentativas com modelos NVIDIA NIM falharam."));
+};
+
 const executeProvider = async (prompt: string, provider: AIProvider, systemInstruction?: string): Promise<string> => {
     switch (provider) {
         case AIProvider.OLLAMA:
@@ -657,6 +816,8 @@ const executeProvider = async (prompt: string, provider: AIProvider, systemInstr
             return await callGroq(prompt, systemInstruction);
         case AIProvider.OPENROUTER:
             return await callOpenRouter(prompt, systemInstruction);
+        case AIProvider.NVIDIA:
+            return await callNvidia(prompt, systemInstruction);
         case AIProvider.CEREBRAS:
             return await callCerebras(prompt, systemInstruction);
         case AIProvider.OPENAI:
@@ -686,6 +847,7 @@ const unifiedGenerate = async (prompt: string, provider: AIProvider = AIProvider
             AIProvider.GOOGLE,
             AIProvider.GROQ,
             AIProvider.OPENROUTER,
+            AIProvider.NVIDIA,
             AIProvider.CEREBRAS,
             AIProvider.OLLAMA,
             AIProvider.MISTRAL,
@@ -815,7 +977,65 @@ export const optimizeLyrics = async (lyrics: string): Promise<string> => {
     return await unifiedGenerate(prompt, AIProvider.GOOGLE);
 };
 
-// 4️⃣ — ESTRUTURAR PROMPT (Suno, Udio, Mureka)
+/**
+ * Remove [Production Note: ...], [Prod: ...], cabeçalhos globais e colchetes órfãos
+ * de uma letra prévia, preservando 100% da letra original e tags estruturais e vocais
+ * para que a reestruturação receba uma base limpa ao mudar de gênero.
+ */
+export const stripProductionNotes = (text: string): string => {
+    if (!text || !text.trim()) return '';
+    return text
+        .replace(/\[(?:Production\s+Note|Prod|Nota\s+de\s+Produ[çc][aã]o):[^\]]*\]/gi, '')
+        .replace(/\[PROMPT_GLOBAL:[^\]]*\]/gi, '')
+        .replace(/^\s*\[(?:BRAZILIAN\s+PORTUGUESE|PORTUGUESE|ENGLISH|SPANISH|LATIN\s+SPANISH|FRENCH|GERMAN|ITALIAN|JAPANESE|KOREAN|CHINESE)\]\s*/im, '')
+        .split(/\r?\n/)
+        .filter(line => {
+            const t = line.trim();
+            return t !== ']' && t !== '[' && t !== '[]' && t !== ']]' && t !== '[[';
+        })
+        .map(line => line.replace(/^\s*\]+\s*/, ''))
+        .join('\n')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+};
+
+/**
+ * Fornece a instrumentação e atmosfera autêntica para gêneros musicais comuns
+ * quando o usuário altera o estilo, garantindo obediência estrita da IA ao novo gênero.
+ */
+export const getGenreArrangementHint = (styles: string[]): string => {
+    const joined = styles.join(" ").toLowerCase();
+    if (joined.includes("pagode") || joined.includes("samba")) {
+        return "Cavaquinho, Tantã, Pandeiro, Surdo, Repique de mão, Violão de 6 e 7 cordas, syncopated samba swing, acoustic percussion, pagode backing chorus";
+    }
+    if (joined.includes("sertanejo") || joined.includes("arrocha") || joined.includes("modão")) {
+        return "Sanfona / Accordion, Viola Caipira, Acoustic Guitars, punchy modern bass and drums, emotional vocal projection";
+    }
+    if (joined.includes("worship") || joined.includes("gospel") || joined.includes("louvor")) {
+        return "Dynamic piano, fingerpicked acoustic guitar, ambient synth pads, cinematic strings, building drum dynamics, soaring vocals";
+    }
+    if (joined.includes("forró") || joined.includes("piseiro") || joined.includes("pisadinha") || joined.includes("baião")) {
+        return "Sanfona / Accordion, Zabumba, Triângulo, syncopated bass, danceable pulse";
+    }
+    if (joined.includes("trap") || joined.includes("hip hop") || joined.includes("rap")) {
+        return "808 sub bass, rapid hi-hat rolls, crisp snare, filtered ambient synths, rhythmic cadence";
+    }
+    if (joined.includes("rock") || joined.includes("metal") || joined.includes("punk")) {
+        return "Distorted electric guitar riffs, punchy bass guitar, driving acoustic rock drums, powerful gritty vocal attitude";
+    }
+    if (joined.includes("funk") || joined.includes("funk br")) {
+        return "130-150 BPM syncopated beat, punchy sub-bass, vocal chops, energetic delivery";
+    }
+    if (joined.includes("mpb") || joined.includes("bossa nova") || joined.includes("bossa")) {
+        return "Nylon acoustic guitar, delicate jazz harmonies, subtle percussion, warm intimate vocal";
+    }
+    if (joined.includes("reggaeton") || joined.includes("latin")) {
+        return "Dembow rhythm, deep sub synth bass, crisp snare, catchy synth hooks, intimate autotune vocals";
+    }
+    return "";
+};
+
+// 4️⃣ — ESTRUTURAR PROMPT (Suno, Udio, Mureka, YuE2)
 export const structureSunoPrompt = async (
     project: Project,
     provider: AIProvider
@@ -823,8 +1043,41 @@ export const structureSunoPrompt = async (
     try {
         const settings = getSystemSettings();
         const detailedInstructions = project.detailedInstructions.map(d => `- SECTION [${d.section}]: ${d.instruction}`).join("\n");
-        const arsenalData = formatArsenalForPrompt(project.arsenal);
-        const styles = ensureArray(project.styles);
+        
+        // Coleta e deduplica estilos ativos do projeto
+        const rawStyles = [
+            ...ensureArray(project.styles),
+            ...ensureArray(project.extractedStyles)
+        ];
+        const uniqueStylesMap = new Map<string, string>();
+        for (const s of rawStyles) {
+            if (typeof s === 'string' && s.trim()) {
+                const lower = s.trim().toLowerCase();
+                if (!uniqueStylesMap.has(lower)) {
+                    uniqueStylesMap.set(lower, s.trim());
+                }
+            }
+        }
+        let activeStyles = Array.from(uniqueStylesMap.values());
+        if (activeStyles.length === 0 && project.stylePrompt && project.stylePrompt.trim()) {
+            activeStyles = [project.stylePrompt.trim()];
+        }
+        if (activeStyles.length === 0) {
+            activeStyles = ["Livre / Contemporâneo"];
+        }
+
+        const genreHint = getGenreArrangementHint(activeStyles);
+        const arsenalInstruments = ensureArray(project.arsenal?.instruments);
+        const combinedInstruments = arsenalInstruments.length > 0
+            ? arsenalInstruments.join(", ")
+            : (genreHint || "Free Choice / Natural Arrangement");
+
+        const enrichedArsenal = {
+            ...project.arsenal,
+            instruments: arsenalInstruments.length > 0 ? arsenalInstruments : (genreHint ? [genreHint] : [])
+        };
+        const arsenalData = formatArsenalForPrompt(enrichedArsenal);
+
         const platform = project.targetPlatform || MusicPlatform.SUNO;
 
         const platformInstructions = {
@@ -866,21 +1119,24 @@ ESTRUTURA DE RESPOSTA OBRIGATÓRIA:
 `.trim()
         }[platform] || "";
 
+        // Limpa notas de produção antigas da letra de entrada para que a nova reestruturação receba uma base pura
+        const cleanInputLyrics = stripProductionNotes(project.lyrics);
+
         let prompt = settings.promptStructure
             .replace("[IDIOMA]", project.language)
-            .replace("[ESTILOS]", styles.join(", "))
+            .replace("[ESTILOS]", activeStyles.join(", "))
             .replace("[ARTISTA]", project.artistInspiration || "Creative Freedom")
             .replace("[SENTIMENTO]", project.sentiment)
             .replace("[ARSENAL]", arsenalData)
             .replace("[DETAILED_INSTRUCTIONS]", detailedInstructions || "None.");
 
         if (prompt.includes("[LYRICS_CONTENT]")) {
-            prompt = prompt.replace("[LYRICS_CONTENT]", project.lyrics);
+            prompt = prompt.replace("[LYRICS_CONTENT]", cleanInputLyrics);
         }
         else if (prompt.includes("[LYRICS INPUT]")) {
             const inputPayload = `
 ### OFFICIAL LYRICS (DO NOT MODIFY):
-${project.lyrics}
+${cleanInputLyrics}
 
 ### ADDITIONAL PRODUCTION INSTRUCTIONS:
 ${detailedInstructions || "No additional specific instructions."}
@@ -888,8 +1144,18 @@ ${detailedInstructions || "No additional specific instructions."}
             prompt = prompt.replace("[LYRICS INPUT]", inputPayload);
         }
         else {
-            prompt += `\n\n[LYRICS]\n${project.lyrics}`;
+            prompt += `\n\n[LYRICS]\n${cleanInputLyrics}`;
         }
+
+        const dynamicStyleOverrideInstruction = `
+CRITICAL - NEW MUSICAL STYLE & RESTRUCTURING ENFORCEMENT:
+- Target Musical Style: ${activeStyles.join(", ")}
+- Target Atmosphere / Emotion: ${project.sentiment}
+- Target Instrumentation: ${combinedInstruments}
+- MANDATORY PRODUCTION NOTES: You MUST generate 100% fresh, authentic [Production Note: ...] for each section strictly adhering to "${activeStyles.join(", ")}". NEVER reuse or preserve old instruments or arrangements from another genre (e.g. if the style is Pagode, NEVER mention soft piano, acoustic folk guitar or orchestral strings; use Cavaquinho, Tantã, Pandeiro, Surdo, Repique).
+- MANDATORY [PROMPT_GLOBAL]: Must end with the active style keywords: "${activeStyles.join(", ")}${project.sentiment && project.sentiment !== 'Neutro' ? ', ' + project.sentiment : ''}". NEVER leave [PROMPT_GLOBAL] empty or ending with a trailing comma.
+- 100% LYRICS PRESERVATION: Every line of the song lyrics must be reproduced word for word with zero omissions.
+`.trim();
 
         // Injeta instrucao especializada de plataforma com protocolo rigido anti-omissao
         const zeroTruncationInstruction = `
@@ -901,12 +1167,52 @@ CRITICAL INSTRUCTION - ZERO TRUNCATION & 100% LYRIC PRESERVATION:
 - Keep all original lyrics 100% intact from start to finish.
 `.trim();
 
-        prompt += `\n\n${platformInstructions}\n\n${zeroTruncationInstruction}\n\nIMPORTANTE: Retorne a estrutura completa preservando toda a letra fornecida e aplicando todas as tags musicais apropriadas para ${platform}. NUNCA OMITA VERSOS NEM USE RETICÊNCIAS "...".`;
+        prompt += `\n\n${platformInstructions}\n\n${dynamicStyleOverrideInstruction}\n\n${zeroTruncationInstruction}\n\nIMPORTANTE: Retorne a estrutura completa preservando toda a letra fornecida e aplicando todas as tags musicais apropriadas para ${platform}. NUNCA OMITA VERSOS NEM USE RETICÊNCIAS "...".`;
 
         const rawResult = await unifiedGenerate(prompt, provider);
         
         // Recupera seções truncadas com reticências (...) caso o modelo tenha omitido letras
-        const restored = restoreTruncatedSections(rawResult, project.lyrics);
+        let restored = restoreTruncatedSections(rawResult, cleanInputLyrics || project.lyrics);
+
+        // Remove colchetes órfãos indevidos
+        restored = restored
+            .split(/\r?\n/)
+            .filter(line => {
+                const t = line.trim();
+                return t !== ']' && t !== '[' && t !== '[]' && t !== ']]' && t !== '[[';
+            })
+            .map(line => line.replace(/^\s*\]+\s*/, ''))
+            .join('\n');
+
+        // VALIDAÇÃO & REPARO RÍGIDO DE [PROMPT_GLOBAL]
+        const cleanStyleString = activeStyles.join(", ");
+        const sentimentString = project.sentiment && project.sentiment !== "Neutro" ? project.sentiment : "";
+        const primaryHint = genreHint || (arsenalInstruments.slice(0, 4).join(", "));
+        const styleKeywords = [cleanStyleString, sentimentString, primaryHint].filter(Boolean).join(", ");
+
+        const globalMatch = restored.match(/\[PROMPT_GLOBAL:\s*([^\]]*)\]/i);
+        if (globalMatch) {
+            let globalContent = globalMatch[1].trim();
+            const endsWithComma = /,\s*$/.test(globalContent);
+            const hasAnyStyle = activeStyles.some(s => globalContent.toLowerCase().includes(s.toLowerCase()));
+
+            if (endsWithComma || !hasAnyStyle || globalContent.endsWith("pristine clarity,") || globalContent.length < 160) {
+                globalContent = globalContent.replace(/,\s*$/, '').trim();
+                if (!hasAnyStyle) {
+                    globalContent = `${globalContent}, ${styleKeywords}`;
+                }
+                restored = restored.replace(globalMatch[0], `[PROMPT_GLOBAL: ${globalContent}]`);
+            }
+        } else {
+            // Injeta [PROMPT_GLOBAL] caso o modelo tenha omitido
+            const langMatch = restored.match(/^\s*(\[[A-Z\s]+\])\s*\n/i);
+            const defaultGlobal = `[PROMPT_GLOBAL: Ultra-realistic professional studio recording, high-fidelity audio, clean and transparent mix, high-end mastering, authentic human vocal performance, expressive emotion, zero AI artifacts, commercial-grade audio, cinematic depth, pristine clarity, industry-standard production, Studio Isolation, ${styleKeywords}]`;
+            if (langMatch) {
+                restored = restored.replace(langMatch[0], `${langMatch[1]}\n${defaultGlobal}\n\n`);
+            } else {
+                restored = `${defaultGlobal}\n\n${restored}`;
+            }
+        }
 
         // Formata o resultado para a plataforma selecionada sem perda de dados
         return formatForPlatform(restored, platform);
@@ -1085,12 +1391,28 @@ export const parseStructuredPrompt = (raw: string): { styleText: string; lyricsT
     }
 
     // Remove eventuais instruções de template entre parênteses no início de cada seção
-    styleText = styleText.replace(/^\s*\([^\)]*\)\s*\n?/m, '').trim();
-    lyricsText = lyricsText.replace(/^\s*\([^\)]*\)\s*\n?/m, '').trim();
+    styleText = styleText.replace(/^\s*\((?:insira|digite|cole|insert|style here)[^\)]*\)\s*\n?/im, '').trim();
+    lyricsText = lyricsText
+        .replace(/^\s*\((?:insira|digite|cole|insert|lyrics here|adicione)[^\)]*\)\s*\n?/im, '')
+        .split(/\r?\n/)
+        .filter(line => {
+            const t = line.trim();
+            return t !== ']' && t !== '[' && t !== '[]' && t !== ']]' && t !== '[[';
+        })
+        .map(line => line.replace(/^\s*\]+\s*/, ''))
+        .join('\n')
+        .trim();
 
-    // Extrai tags separadas por vírgula ou linha
-    const tags = styleText
-        ? styleText
+    // Extrai tags separadas por vírgula ou linha, filtrando boilerplate da Golden String
+    let effectiveStyleForTags = styleText;
+    if (effectiveStyleForTags.includes("Studio Isolation,")) {
+        effectiveStyleForTags = effectiveStyleForTags.split("Studio Isolation,")[1] || "";
+    } else if (effectiveStyleForTags.includes("industry-standard production,")) {
+        effectiveStyleForTags = effectiveStyleForTags.split("industry-standard production,")[1] || "";
+    }
+
+    const tags = effectiveStyleForTags
+        ? effectiveStyleForTags
               .split(/[,;\n]+/)
               .map(t => t.trim().replace(/^[-*•]\s*/, ''))
               .filter(t => t.length > 1 && !t.startsWith('(') && !t.startsWith('['))

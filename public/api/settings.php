@@ -49,6 +49,7 @@ try {
             unset($out->groqApiKey);
             unset($out->cerebrasApiKey);
             unset($out->openrouterApiKey);
+            unset($out->nvidiaApiKey);
             unset($out->mistralApiKey);
             unset($out->togetherApiKey);
         }

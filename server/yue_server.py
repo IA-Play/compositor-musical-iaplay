@@ -23,6 +23,8 @@ import json
 import uuid
 import threading
 import traceback
+import urllib.request
+import urllib.error
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
@@ -771,6 +773,102 @@ def list_outputs(limit: int = 50):
 
     outputs.sort(key=lambda x: x["created_at"], reverse=True)
     return {"outputs": outputs[:limit], "total": len(outputs)}
+
+
+@app.get("/api/v1/ai/nvidia/models")
+def get_nvidia_models():
+    """Retorna a lista curada dos melhores modelos gratuitos ativos da NVIDIA NIM."""
+    return {
+        "models": [
+            {
+                "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+                "name": "Llama 3.1 Nemotron 70B",
+                "badge": "Recomendado ⭐",
+                "description": "Otimizado pela NVIDIA, ultra-rápido, excelente para estruturas e raciocínio"
+            },
+            {
+                "id": "mistralai/mistral-large-2-instruct",
+                "name": "Mistral Large 2 (123B)",
+                "badge": "Top para Letras ✍️",
+                "description": "Excelente para rimas, métrica poética e português brasileiro natural"
+            },
+            {
+                "id": "nv-mistralai/mistral-nemo-12b-instruct",
+                "name": "Mistral NeMo 12B",
+                "badge": "Ultra Rápido ⚡",
+                "description": "Geração quase instantânea e ótimo consumo de tokens"
+            },
+            {
+                "id": "mistralai/mixtral-8x22b-v0.1",
+                "name": "Mixtral 8x22B MoE",
+                "badge": "MoE Potente 🧠",
+                "description": "Arquitetura MoE versátil com ampla gama estilística"
+            },
+            {
+                "id": "deepseek-ai/deepseek-v4.1-flash",
+                "name": "DeepSeek v4.1 Flash",
+                "badge": "Criativo 💡",
+                "description": "Perfeito para ideias musicais conceituais e metáforas"
+            },
+            {
+                "id": "google/gemma-3-12b-it",
+                "name": "Google Gemma 3 12B",
+                "badge": "Google 🌟",
+                "description": "Modelo moderno do Google na nuvem NVIDIA"
+            },
+            {
+                "id": "nvidia/nemotron-4-340b-instruct",
+                "name": "Nemotron 4 340B",
+                "badge": "Modelo Gigante 👑",
+                "description": "Maior modelo da NVIDIA para composições densas e ricas"
+            },
+            {
+                "id": "meta/llama2-70b",
+                "name": "Meta Llama 2 70B",
+                "badge": "Meta Clássico",
+                "description": "Modelo consagrado para estruturação musical"
+            }
+        ]
+    }
+
+
+@app.post("/api/v1/ai/nvidia")
+async def proxy_nvidia_chat(request: Request):
+    """
+    Proxy local para NVIDIA NIM (integrate.api.nvidia.com)
+    Resolve 100% dos problemas de CORS no navegador e timeout.
+    """
+    body = await request.json()
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header and "apiKey" in body:
+        auth_header = f"Bearer {body.pop('apiKey')}"
+
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Header Authorization Bearer da NVIDIA necessário")
+
+    target_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": auth_header,
+        "Accept": "application/json"
+    }
+
+    try:
+        data_bytes = json.dumps(body).encode("utf-8")
+        req_obj = urllib.request.Request(target_url, data=data_bytes, headers=headers, method="POST")
+        with urllib.request.urlopen(req_obj, timeout=40) as response:
+            resp_body = response.read().decode("utf-8")
+            return json.loads(resp_body)
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        try:
+            err_json = json.loads(err_body)
+            detail = err_json.get("detail") or err_json.get("error", {}).get("message") or err_body
+            raise HTTPException(status_code=e.code, detail=detail)
+        except Exception:
+            raise HTTPException(status_code=e.code, detail=err_body)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro de conexão com NVIDIA NIM: {str(e)}")
 
 
 if __name__ == "__main__":
