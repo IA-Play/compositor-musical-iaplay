@@ -37,6 +37,12 @@ export interface MaestroStatus {
     message?: string;
     modelsInstalled?: boolean;
     modelsProgress?: number;
+    gpu?: string;
+    device?: string;
+    isLoadingPipeline?: boolean;
+    pipelineLoadingPhase?: string;
+    ollamaOnline?: boolean;
+    ollamaInstalled?: boolean;
 }
 
 export interface ModelDownloadState {
@@ -167,6 +173,12 @@ export const checkMaestroStatus = async (customEndpoint?: string): Promise<Maest
                 activeJobsCount: 0,
                 modelsInstalled: data.models_installed ?? true,
                 modelsProgress: data.models_progress ?? 1.0,
+                gpu: data.gpu || 'GPU Ativa',
+                device: data.device || 'cuda',
+                isLoadingPipeline: data.is_loading_pipeline ?? false,
+                pipelineLoadingPhase: data.pipeline_loading_phase || '',
+                ollamaOnline: data.ollama_online ?? false,
+                ollamaInstalled: data.ollama_installed ?? false,
                 message: data.models_installed
                     ? `Motor YuE2 Conectado (${data.gpu || 'GPU Ativa'})`
                     : `Motor YuE2 Conectado (Modelos pendentes de download)`

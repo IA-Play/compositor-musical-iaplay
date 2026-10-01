@@ -90,7 +90,7 @@ export const Settings: React.FC = () => {
             await showAlert(t('settings.success'));
             setPassword('');
         } catch (e) {
-            await showAlert("Erro ao atualizar perfil.");
+            await showAlert(t('settings.profile_error'));
         } finally {
             setIsSaving(false);
         }
@@ -178,10 +178,10 @@ export const Settings: React.FC = () => {
                 maestroUrl: keys.maestroUrl
             });
             localStorage.setItem('iaplay_nvidia_model', keys.nvidiaModel);
-            await showAlert("Configurações e Chaves de IA salvas com sucesso!");
+            await showAlert(t('settings.keys_saved_success'));
         } catch (e) {
             console.error("Save keys error:", e);
-            await showAlert("Erro ao salvar chaves API.");
+            await showAlert(t('settings.keys_save_error'));
         } finally {
             setIsSaving(false);
         }
@@ -246,18 +246,17 @@ export const Settings: React.FC = () => {
 
                                 <div className="pt-6 border-t border-white/10">
                                     <div className="flex items-center gap-2 mb-2">
-                                        <h3 className="text-sm font-bold text-white">Memória Criativa Pessoal (DNA Sônico)</h3>
-                                        <div className="px-2 py-0.5 bg-primary/20 text-primary rounded text-[10px] font-bold">ATIVO</div>
+                                        <h3 className="text-sm font-bold text-white">{t('settings.creative_context_title')}</h3>
+                                        <div className="px-2 py-0.5 bg-primary/20 text-primary rounded text-[10px] font-bold">{t('settings.active_badge')}</div>
                                     </div>
                                     <p className="text-xs text-zinc-400 mb-4">
-                                        Ensine a IA sobre o seu estilo musical, sua banda ou preferências perenes.
-                                        O IAPlay sempre lerá estas instruções antes de compor qualquer letra para você.
+                                        {t('settings.creative_context_desc')}
                                     </p>
                                     <textarea
                                         rows={4}
                                         value={creativeContext}
                                         onChange={(e) => setCreativeContext(e.target.value)}
-                                        placeholder="Ex: Sou compositor de MPB moderna e Indie. Gosto de metáforas poéticas, rimas ricas e ritmo sincopado. Evite temas superficiais e clichês..."
+                                        placeholder={t('settings.dna_context_placeholder')}
                                         className="w-full bg-black border border-white/10 rounded-xl p-4 text-sm text-white focus:border-primary outline-none custom-scrollbar"
                                     />
                                 </div>
@@ -272,7 +271,7 @@ export const Settings: React.FC = () => {
                                                 value={password}
                                                 onChange={(e) => setPassword(e.target.value)}
                                                 autoComplete="new-password"
-                                                placeholder="Deixe em branco para manter a atual"
+                                                placeholder={t('settings.leave_blank_password')}
                                                 className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none pr-10"
                                             />
                                             <button
@@ -304,18 +303,18 @@ export const Settings: React.FC = () => {
                                 <div>
                                     <h2 className="text-xl font-bold mb-2">{t('settings.tab_keys')}</h2>
                                     <p className="text-sm text-zinc-400 mb-4">
-                                        Configure o Ollama (100% Grátis e Local no Pinokio) ou insira suas chaves de API para usar os modelos de nuvem.
+                                        {t('settings.api_desc')}
                                     </p>
 
                                     <div className="p-4 bg-primary/10 border border-primary/30 rounded-xl text-xs space-y-2 text-zinc-300">
                                         <div className="flex items-center gap-2 font-bold text-white text-sm">
-                                            <Shield className="w-4 h-4 text-primary" /> Execução Direta e Segura no Navegador
+                                            <Shield className="w-4 h-4 text-primary" /> {t('settings.browser_execution_title')}
                                         </div>
                                         <p>
-                                            Suas chaves são salvas localmente no seu navegador e utilizadas em chamadas diretas para os provedores de IA.
+                                            {t('settings.browser_execution_desc')}
                                         </p>
                                         <p className="text-zinc-400">
-                                            💡 Obtenha chaves gratuitas em <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Google AI Studio <ExternalLink className="w-3 h-3" /></a>, <a href="https://build.nvidia.com/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">NVIDIA NIM <ExternalLink className="w-3 h-3" /></a>, <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Groq Console <ExternalLink className="w-3 h-3" /></a> ou <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">OpenRouter <ExternalLink className="w-3 h-3" /></a>.
+                                            💡 {t('settings.get_free_keys_hint')} <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Google AI Studio <ExternalLink className="w-3 h-3" /></a>, <a href="https://build.nvidia.com/settings/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">NVIDIA NIM <ExternalLink className="w-3 h-3" /></a>, <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">Groq Console <ExternalLink className="w-3 h-3" /></a> {t('settings.or')} <a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-bold inline-flex items-center gap-1">OpenRouter <ExternalLink className="w-3 h-3" /></a>.
                                         </p>
                                     </div>
                                 </div>
@@ -327,7 +326,7 @@ export const Settings: React.FC = () => {
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></div>
                                                 <label className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                                                    🦙 Ollama (IA Local / Pinokio - 100% Grátis & Offline)
+                                                    🦙 {t('settings.ollama_title')}
                                                 </label>
                                             </div>
                                             <button
@@ -336,13 +335,13 @@ export const Settings: React.FC = () => {
                                                 disabled={testingOllama}
                                                 className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-bold transition-all disabled:opacity-50"
                                             >
-                                                {testingOllama ? "Testando..." : "Testar Conexão"}
+                                                {testingOllama ? t('settings.testing_btn') : t('settings.test_btn')}
                                             </button>
                                         </div>
 
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                             <div>
-                                                <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">URL / Endpoint do Ollama</label>
+                                                <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">{t('settings.ollama_endpoint')}</label>
                                                 <input
                                                     type="text"
                                                     value={keys.ollamaUrl}
@@ -352,7 +351,7 @@ export const Settings: React.FC = () => {
                                                 />
                                             </div>
                                             <div>
-                                                <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">Modelo Selecionado</label>
+                                                <label className="block text-[11px] font-bold text-zinc-400 uppercase mb-1">{t('settings.ollama_selected_model')}</label>
                                                 {installedOllamaModels.length > 0 ? (
                                                     <select
                                                         value={keys.ollamaModel}
@@ -381,7 +380,7 @@ export const Settings: React.FC = () => {
                                         {installedOllamaModels.length > 0 && (
                                             <div className="space-y-1.5 pt-1">
                                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                                                    📦 Modelos Baixados no seu PC ({installedOllamaModels.length}):
+                                                    📦 {t('settings.ollama_installed_models')} ({installedOllamaModels.length}):
                                                 </span>
                                                 <div className="flex flex-wrap gap-1.5">
                                                     {installedOllamaModels.map(m => (
@@ -402,7 +401,7 @@ export const Settings: React.FC = () => {
                                         {/* Modelos Populares Disponíveis Online */}
                                         <div className="space-y-2 pt-2 border-t border-white/5">
                                             <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
-                                                🌐 Modelos Recomendados (Baixar no Terminal / Pinokio):
+                                                🌐 {t('settings.ollama_recommended_models')}:
                                             </span>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                                 {POPULAR_OLLAMA_MODELS.map(pm => {
@@ -415,7 +414,7 @@ export const Settings: React.FC = () => {
                                                             <div className="min-w-0">
                                                                 <div className="flex items-center gap-1.5">
                                                                     <span className="font-mono font-bold text-white text-xs">{pm.name}</span>
-                                                                    {isInstalled && <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded">BAIXADO</span>}
+                                                                    {isInstalled && <span className="px-1.5 py-0.2 bg-emerald-500/20 text-emerald-400 text-[9px] font-bold rounded">{t('settings.installed_badge')}</span>}
                                                                 </div>
                                                                 <p className="text-[10px] text-zinc-400 truncate">{pm.desc}</p>
                                                             </div>
@@ -423,12 +422,12 @@ export const Settings: React.FC = () => {
                                                                 type="button"
                                                                 onClick={async () => {
                                                                     await navigator.clipboard.writeText(`ollama run ${pm.name}`);
-                                                                    showAlert(`Comando 'ollama run ${pm.name}' copiado! Cole no seu terminal ou Pinokio.`);
+                                                                    showAlert(t('settings.ollama_copy_cmd_alert'));
                                                                 }}
                                                                 className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded text-[10px] font-mono whitespace-nowrap transition-colors"
                                                                 title="Copiar comando de instalação"
                                                             >
-                                                                Copiar
+                                                                {t('settings.copy_btn')}
                                                             </button>
                                                         </div>
                                                     );
@@ -442,7 +441,7 @@ export const Settings: React.FC = () => {
                                             </div>
                                         )}
                                         <p className="text-[10px] text-zinc-400">
-                                            💡 Não requer chave de API nem internet! Executa direto no seu PC/Pinokio.
+                                            💡 {t('settings.ollama_offline_tip')}
                                         </p>
                                     </div>
 
@@ -454,8 +453,8 @@ export const Settings: React.FC = () => {
                                                     <Music className="w-4 h-4" />
                                                 </div>
                                                 <div>
-                                                    <span className="text-sm font-bold text-white block">IAPLAY Studio · YuE2 (Geração de Áudio Local)</span>
-                                                    <span className="text-[10px] text-zinc-400">Síntese neural de voz e instrumentos em estéreo 48kHz (CC BY-NC 4.0)</span>
+                                                    <span className="text-sm font-bold text-white block">{t('settings.maestro_title')}</span>
+                                                    <span className="text-[10px] text-zinc-400">{t('settings.maestro_desc')}</span>
                                                 </div>
                                             </div>
                                             <span className="text-[10px] bg-primary/20 text-primary border border-primary/30 px-2 py-0.5 rounded-full font-bold">
@@ -465,7 +464,7 @@ export const Settings: React.FC = () => {
 
                                         <div>
                                             <label className="block text-xs font-bold text-zinc-400 uppercase mb-1">
-                                                URL do Servidor IAPLAY Studio
+                                                {t('settings.maestro_endpoint')}
                                             </label>
                                             <div className="flex gap-2">
                                                 <input
@@ -481,7 +480,7 @@ export const Settings: React.FC = () => {
                                                     onClick={handleTestMaestro}
                                                     className="px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
                                                 >
-                                                    {testingMaestro ? 'Testando...' : 'Testar'}
+                                                    {testingMaestro ? t('settings.testing_btn') : t('settings.test_btn')}
                                                 </button>
                                                 <button
                                                     type="button"
@@ -490,7 +489,7 @@ export const Settings: React.FC = () => {
                                                     className="px-3 py-2 bg-primary/20 hover:bg-primary/30 border border-primary/30 text-primary rounded-xl text-xs font-bold transition-colors whitespace-nowrap"
                                                     title="Procurar em portas locais comuns"
                                                 >
-                                                    Auto-Detectar
+                                                    {t('settings.autodetect_btn')}
                                                 </button>
                                             </div>
                                         </div>
@@ -502,12 +501,12 @@ export const Settings: React.FC = () => {
                                         )}
 
                                         <p className="text-[10px] text-zinc-400 leading-relaxed">
-                                            💡 Integração com o motor local IAPLAY Studio (YuE2). Quando o IAPLAY Studio estiver rodando, você pode gerar músicas completas com 1 clique direto no IAPLAY!
+                                            💡 {t('settings.maestro_tip')}
                                         </p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Google Gemini API Keys (Recomendado)</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.google_title')}</label>
                                         <textarea
                                             rows={3}
                                             value={keys.google}
@@ -515,11 +514,11 @@ export const Settings: React.FC = () => {
                                             placeholder="Cole suas chaves aqui (AIzaSy...), uma por linha."
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelo: Gemini 2.0 Flash / 1.5 Flash (Gratuito no Google AI Studio). Suporta múltiplas chaves.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.google_desc')}</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">Groq API Keys</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.groq_title')}</label>
                                         <textarea
                                             rows={2}
                                             value={keys.groq}
@@ -527,11 +526,11 @@ export const Settings: React.FC = () => {
                                             placeholder="gsk_..., uma por linha"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelos: Llama 3.3 70B, Llama 3.1 8B, Mixtral, DeepSeek R1.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.groq_desc')}</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">⚡ Cerebras Cloud API Keys (Grátis - Ultra-Rápido)</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.cerebras_title')}</label>
                                         <textarea
                                             rows={2}
                                             value={keys.cerebras}
@@ -539,19 +538,19 @@ export const Settings: React.FC = () => {
                                             placeholder="csk-..., uma por linha (api.cerebras.ai)"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelos: Llama 3.3 70B, Llama 3.1 8B (até 2.000 tokens/segundo no Tier Gratuito).</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.cerebras_desc')}</p>
                                     </div>
 
                                     <div>
                                         <div className="flex items-center justify-between mb-2">
-                                            <label className="text-xs font-bold text-zinc-500 uppercase">🟢 NVIDIA NIM API Keys (Grátis - Ultra-Rápido)</label>
+                                            <label className="text-xs font-bold text-zinc-500 uppercase">{t('settings.nvidia_title')}</label>
                                             <a
                                                 href="https://build.nvidia.com/settings/api-keys"
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 font-bold"
                                             >
-                                                Criar Chave Grátis (build.nvidia.com) <ExternalLink className="w-2.5 h-2.5" />
+                                                {t('settings.nvidia_create_link')} <ExternalLink className="w-2.5 h-2.5" />
                                             </a>
                                         </div>
                                         <textarea
@@ -561,11 +560,11 @@ export const Settings: React.FC = () => {
                                             placeholder="nvapi-..., uma por linha (build.nvidia.com)"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">1.000 créditos gratuitos da NVIDIA renováveis sem necessidade de cartão de crédito.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.nvidia_desc')}</p>
 
                                         <div className="mt-3 bg-zinc-900/60 p-3 rounded-xl border border-white/5 space-y-2">
                                             <label className="block text-[11px] font-bold text-zinc-300 uppercase">
-                                                Modelo Padrão da NVIDIA:
+                                                {t('settings.nvidia_default_model')}
                                             </label>
                                             <select
                                                 value={keys.nvidiaModel}
@@ -591,7 +590,7 @@ export const Settings: React.FC = () => {
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">🌐 OpenRouter API Keys (Modelos Grátis)</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.openrouter_title')}</label>
                                         <textarea
                                             rows={2}
                                             value={keys.openrouter}
@@ -599,11 +598,11 @@ export const Settings: React.FC = () => {
                                             placeholder="sk-or-v1-..., uma por linha (openrouter.ai)"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelos: Llama 3.3 70B Free, Gemini 2.0 Flash Lite Free, DeepSeek R1 Free.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.openrouter_desc')}</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">OpenAI API Keys</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.openai_title')}</label>
                                         <textarea
                                             rows={2}
                                             value={keys.openai}
@@ -611,11 +610,11 @@ export const Settings: React.FC = () => {
                                             placeholder="sk-..., uma por linha"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelos: GPT-4o Mini, GPT-4o.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.openai_desc')}</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">🇫🇷 Mistral AI API Keys</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.mistral_title')}</label>
                                         <textarea
                                             rows={2}
                                             value={keys.mistral}
@@ -623,11 +622,11 @@ export const Settings: React.FC = () => {
                                             placeholder="Chave da API da Mistral AI, uma por linha (console.mistral.ai)"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelos: Mistral Small, Pixtral 12B, Open Mixtral 8x7B.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.mistral_desc')}</p>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">🚀 Together AI API Keys</label>
+                                        <label className="block text-xs font-bold text-zinc-500 uppercase mb-2">{t('settings.together_title')}</label>
                                         <textarea
                                             rows={2}
                                             value={keys.together}
@@ -635,7 +634,7 @@ export const Settings: React.FC = () => {
                                             placeholder="Chave da API da Together AI, uma por linha (together.ai)"
                                             className="w-full bg-black border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none font-mono text-xs"
                                         />
-                                        <p className="text-[10px] text-zinc-500 mt-1">Modelos: Llama 3.3 70B Turbo, Llama 3.1 8B, DeepSeek R1.</p>
+                                        <p className="text-[10px] text-zinc-500 mt-1">{t('settings.together_desc')}</p>
                                     </div>
                                 </div>
 

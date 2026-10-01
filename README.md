@@ -12,7 +12,7 @@
 [![Vite](https://img.shields.io/badge/Vite-7.0-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
-[⚡ Baixar no Pinokio](https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay) • [Novidades v3.4.0](#-novidades-da-versão-340) • [Funcionalidades](#-principais-funcionalidades) • [Motor YuE2 Local](#-motor-neural-local-yue2--sheetsage2) • [API](#-documentação-da-api)
+[⚡ Baixar no Pinokio](https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay) • [Novidades v3.5.0](#-novidades-da-versão-350) • [Funcionalidades](#-principais-funcionalidades) • [Motor YuE2 Local](#-motor-neural-local-yue2--sheetsage2) • [API](#-documentação-da-api)
 
 </div>
 
@@ -26,6 +26,27 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 3. **Criação de Covers & Transcrição (SheetSage2):** Carregue um áudio de referência (.mp3, .wav, .m4a) para extrair harmonia e melodia guia automaticamente.
 4. **Humanizador de Áudio & Anti-Detecção:** Remove artefatos de IA, normaliza dinâmica e limpa assinaturas para distribuição em plataformas.
 5. **Duração Expandida:** Geração de até 10 minutos (600 segundos) de música contínua.
+
+---
+
+## 🚀 Novidades da Versão 3.5.0
+
+- 🌐 **Suporte Multilíngue Completo (Português, Inglês e Espanhol):**
+  - Todo o IAPLAY Studio agora opera nativamente em 3 idiomas: Editor de composição, tags, seletor de motores, painel de regras de seção, modais, configurações e centro de produção YuE2.
+  - Sistema de fallback multinível em cascata (`Idioma Selecionado -> PT -> EN -> Chave`), garantindo interface limpa e sem textos crus mesmo em transições de rede.
+- 🛠️ **Instalação Universal e Autocura de Ambiente no Pinokio / Windows:**
+  - Script `install.json` padronizado para instalar todas as dependências do servidor Python (`server/requirements.txt`), incluindo PyTorch 2.4.0 com aceleração CUDA cu124, diffusers, transformers, accelerate, librosa, soundfile, flask, flask-cors e beautifulsoup4.
+  - Script `start.json` aprimorado para verificar se o PyTorch CUDA já está presente antes de rodar, prevenindo reinstalações desnecessárias ou falhas de caminho no Windows.
+  - Script `download_models.bat` e rota interna que realiza o download automático e verificação de integridade dos checkpoints oficiais do YuE2 3B e SheetSage2 (~6 GB), salvando na pasta `ckpts`.
+- ⏳ **Feedback Dinâmico de Hardware & Carregamento de Tensores:**
+  - Banners amigáveis e explicativos alertando o usuário enquanto os pesos neurais estão sendo alocados na memória (GPU/RAM), tanto para o Ollama quanto para o YuE2.
+  - Comunicação clara respeitando as diferentes configurações e velocidades de cada computador.
+- 🦙 **Seletores Dinâmicos de Modelos Locais & Nuvem:**
+  - Deteção automática e listagem em tempo real de modelos baixados no Ollama, com troca rápida em 1 clique.
+  - Seletor de modelos da NVIDIA NIM Cloud gratuita com descrições detalhadas de cada inteligência.
+- 🐛 **Resolução de Erros de Instalação e Desinstalação:**
+  - Corrigido o erro de sintaxe de aspas em caminhos no PowerShell ao disparar scripts batch.
+  - Autocura de pacotes ausentes e correção de dependências cruzadas entre MIDI e diffusers.
 
 ---
 

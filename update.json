@@ -11,18 +11,52 @@
       }
     },
     {
+      "when": "{{!exists('env')}}",
+      "method": "shell.run",
+      "params": {
+        "message": [
+          "uv venv env --python 3.11 || uv venv env || python -m venv env"
+        ]
+      }
+    },
+    {
       "method": "shell.run",
       "params": {
         "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
         "message": [
           "uv pip install -r server/requirements.txt --index-strategy unsafe-best-match"
         ]
       }
     },
     {
+      "method": "script.start",
+      "params": {
+        "uri": "torch.js",
+        "params": {
+          "venv": "env",
+          "venv_python": "3.11"
+        }
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "message": [
+          "python server/download_models.py"
+        ]
+      }
+    },
+    {
       "method": "notify",
       "params": {
-        "html": "IAPLAY Studio atualizado com sucesso!"
+        "html": "IAPLAY Studio atualizado com sucesso! Dependências e modelos verificados."
       }
     }
   ]

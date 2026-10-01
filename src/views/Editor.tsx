@@ -65,6 +65,13 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
     const [aiProvider, setAiProvider] = useState<AIProvider>(() => {
         const saved = localStorage.getItem('iaplay_preferred_provider');
         if (saved && Object.values(AIProvider).includes(saved as AIProvider)) {
+            if (saved === AIProvider.OLLAMA && !hasKeyForProvider(AIProvider.OLLAMA)) {
+                if (hasKeyForProvider(AIProvider.GOOGLE)) return AIProvider.GOOGLE;
+                if (hasKeyForProvider(AIProvider.NVIDIA)) return AIProvider.NVIDIA;
+                if (hasKeyForProvider(AIProvider.GROQ)) return AIProvider.GROQ;
+                if (hasKeyForProvider(AIProvider.OPENROUTER)) return AIProvider.OPENROUTER;
+                return AIProvider.GOOGLE;
+            }
             return saved as AIProvider;
         }
         if (hasKeyForProvider(AIProvider.GOOGLE)) return AIProvider.GOOGLE;
@@ -379,7 +386,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
     const handleOptimizeLyrics = async () => {
         await runWithFailover(t('messages.polishing'), async () => {
-            const result = await optimizeLyrics(project.lyrics);
+            const result = await optimizeLyrics(project.lyrics, aiProvider);
             setProject({ ...project, lyrics: result });
         });
     };
@@ -630,7 +637,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
         await runWithFailover(t('messages.channeling_artist').replace('{artist}', artist), async () => {
             // Pass the selected song as the topic
-            const { generatedLyrics } = await generateByArtistFlow(artist, project.styles, selectedSong);
+            const { generatedLyrics } = await generateByArtistFlow(artist, project.styles, selectedSong, aiProvider);
             setProject({ ...project, lyrics: generatedLyrics, artistInspiration: artist });
             await showAlert(`Letra recriada e inspirada na vibe de "${selectedSong}" do ${artist}!`);
         });
@@ -761,7 +768,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 <span className="flex items-center gap-1.5"><Cpu className="w-3 h-3 text-primary" /> {t('editor.engine')}</span>
                                 {aiProvider !== AIProvider.OLLAMA && hasKeyForProvider(aiProvider) && (
                                     <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
-                                        <Check className="w-3 h-3" /> Chave Ativa
+                                        <Check className="w-3 h-3" /> {t('editor.key_active')}
                                     </span>
                                 )}
                             </div>
@@ -787,7 +794,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                     <div className="flex items-center justify-between text-[11px] font-bold text-amber-400">
                                         <span className="flex items-center gap-1.5">
                                             <Key className="w-3.5 h-3.5" />
-                                            Chave necessária
+                                            {t('editor.key_required')}
                                         </span>
                                         <a
                                             href={getProviderKeyUrl(aiProvider)}
@@ -795,7 +802,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                             rel="noreferrer"
                                             className="text-primary hover:underline flex items-center gap-1 text-[10px]"
                                         >
-                                            Pegar Chave Grátis <ExternalLink className="w-2.5 h-2.5" />
+                                            {t('editor.get_free_key')} <ExternalLink className="w-2.5 h-2.5" />
                                         </a>
                                     </div>
                                     <div className="flex gap-1.5">
@@ -804,7 +811,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                             value={quickApiKey}
                                             onChange={(e) => setQuickApiKey(e.target.value)}
                                             onKeyDown={(e) => e.key === 'Enter' && handleSaveQuickKey()}
-                                            placeholder="Cole sua API Key aqui..."
+                                            placeholder={t('editor.paste_key_placeholder')}
                                             className="flex-1 bg-black border border-white/10 rounded-lg px-2.5 py-1.5 text-xs text-white placeholder-zinc-600 focus:border-primary outline-none"
                                         />
                                         <button
@@ -812,24 +819,26 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                             onClick={handleSaveQuickKey}
                                             className="px-3 py-1.5 bg-primary text-white rounded-lg text-xs font-bold hover:bg-[#e05626] transition-colors"
                                         >
-                                            Salvar
+                                            {t('editor.btn_save')}
                                         </button>
                                     </div>
                                     {quickKeySaved && (
                                         <p className="text-[10px] text-emerald-400 font-bold animate-in fade-in">
-                                            ✅ Chave salva e ativada com sucesso!
+                                            ✅ {t('editor.key_saved_success')}
                                         </p>
                                     )}
-                                    <div className="flex items-center justify-between text-[10px] pt-0.5 text-zinc-400">
-                                        <span>Ou use IA local:</span>
-                                        <button
-                                            type="button"
-                                            onClick={() => handleSelectProvider(AIProvider.OLLAMA)}
-                                            className="text-emerald-400 hover:underline font-bold"
-                                        >
-                                            🦙 Alternar para Ollama
-                                        </button>
-                                    </div>
+                                    {isOllamaOnline && (
+                                        <div className="flex items-center justify-between text-[10px] pt-0.5 text-zinc-400">
+                                            <span>{t('editor.or_use_local')}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleSelectProvider(AIProvider.OLLAMA)}
+                                                className="text-emerald-400 hover:underline font-bold"
+                                            >
+                                                🦙 {t('editor.switch_to_ollama')}
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -839,14 +848,14 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                     <div className="flex items-center justify-between text-[11px] font-bold">
                                         <span className="flex items-center gap-1.5 text-emerald-400">
                                             <span className={`w-2 h-2 rounded-full ${isOllamaOnline ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`} />
-                                            {isOllamaOnline ? `Ollama Online (${ollamaModels.length} modelo(s))` : 'Ollama Desconectado'}
+                                            {isOllamaOnline ? `${t('editor.ollama_online')} (${ollamaModels.length} modelo(s))` : t('editor.ollama_offline')}
                                         </span>
                                         <button
                                             type="button"
                                             onClick={refreshOllama}
                                             disabled={loadingOllama}
                                             className="text-zinc-400 hover:text-white transition-colors"
-                                            title="Atualizar lista de modelos instalados no PC"
+                                            title={t('editor.refresh_models_title')}
                                         >
                                             <RefreshCw className={`w-3.5 h-3.5 ${loadingOllama ? 'animate-spin' : ''}`} />
                                         </button>
@@ -854,7 +863,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
                                     {ollamaModels.length > 0 ? (
                                         <div>
-                                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">Modelo Baixado:</label>
+                                            <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">{t('editor.downloaded_model')}</label>
                                             <select
                                                 value={selectedOllamaModel}
                                                 onChange={(e) => {
@@ -872,7 +881,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                         </div>
                                     ) : (
                                         <div className="text-[10px] text-zinc-400 space-y-1">
-                                            <p>{isOllamaOnline ? "Nenhum modelo baixado no Ollama." : "Inicie o Ollama no Pinokio ou PC."}</p>
+                                            <p>{isOllamaOnline ? t('editor.no_ollama_models') : t('editor.start_ollama_hint')}</p>
                                             <p className="font-mono bg-black/60 p-1.5 rounded text-emerald-400 border border-white/5 select-all">
                                                 ollama run llama3.2
                                             </p>
@@ -887,7 +896,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                     <div className="flex items-center justify-between text-[11px] font-bold">
                                         <span className="flex items-center gap-1.5 text-emerald-400">
                                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                            NVIDIA NIM (Modelos Gratuitos)
+                                            {t('editor.nvidia_nim_models')}
                                         </span>
                                         <a
                                             href="https://build.nvidia.com"
@@ -901,7 +910,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
 
                                     <div>
                                         <label className="block text-[10px] font-bold text-zinc-400 uppercase mb-1">
-                                            Modelo Ativo:
+                                            {t('editor.nvidia_active_model')}
                                         </label>
                                         <select
                                             value={selectedNvidiaModel}
@@ -989,9 +998,9 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             {/* Quick Suggestions & Autocomplete com Rolagem Compacta */}
                             <div className="space-y-1.5 pt-1">
                                 <div className="flex items-center justify-between text-[9px] text-zinc-500 font-bold uppercase tracking-wider">
-                                    <span>{styleInput.trim() ? 'Ritmos Correspondentes' : t('editor.suggestions')}</span>
+                                    <span>{styleInput.trim() ? t('editor.matching_rhythms') : t('editor.suggestions')}</span>
                                     {styleInput.trim() && (
-                                        <span className="text-[9px] text-primary/80 lowercase font-normal">filtrando por "{styleInput}"</span>
+                                        <span className="text-[9px] text-primary/80 lowercase font-normal">{t('editor.filtering_by')} "{styleInput}"</span>
                                     )}
                                 </div>
                                 <div className="max-h-24 overflow-y-auto custom-scrollbar p-1.5 bg-black/50 border border-white/5 rounded-lg flex flex-wrap gap-1">
@@ -1015,7 +1024,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                             onClick={() => addStyleTag(styleInput.trim())}
                                             className="text-[9px] px-2 py-0.5 bg-primary/20 border border-primary/50 text-white rounded hover:bg-primary transition-all font-semibold flex items-center gap-1 shrink-0"
                                         >
-                                            <span>Criar "{styleInput.trim()}"</span>
+                                            <span>{t('editor.create_tag')} "{styleInput.trim()}"</span>
                                         </button>
                                     )}
                                 </div>
@@ -1026,9 +1035,9 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 onChange={e => setProject({ ...project, arsenal: { ...project.arsenal, quality: e.target.value as AudioQuality } })}
                                 className="w-full bg-zinc-900 border border-white/10 rounded-lg p-2 text-xs text-zinc-300 mt-2"
                             >
-                                <option value={AudioQuality.MASTERED}>Alta Qualidade (Masterizado)</option>
-                                <option value={AudioQuality.STUDIO}>Padrão (Estúdio)</option>
-                                <option value={AudioQuality.RAW}>Raw (Demo)</option>
+                                <option value={AudioQuality.MASTERED}>{t('editor.quality_mastered')}</option>
+                                <option value={AudioQuality.STUDIO}>{t('editor.quality_studio')}</option>
+                                <option value={AudioQuality.RAW}>{t('editor.quality_raw')}</option>
                             </select>
 
                             <button 
@@ -1066,7 +1075,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                     className="p-3 bg-zinc-900 hover:bg-zinc-800 border border-white/5 rounded-lg flex flex-col items-center justify-center gap-1 text-center transition-colors group"
                                 >
                                     <FileAudio className="w-4 h-4 text-pink-400 group-hover:scale-110 transition-transform" />
-                                    <span className="text-[10px] font-medium text-zinc-300">DNA Sônico</span>
+                                    <span className="text-[10px] font-medium text-zinc-300">{t('editor.btn_sonic_dna')}</span>
                                 </button>
                             </div>
                         </section>
@@ -1087,7 +1096,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest ml-3">{t('editor.composition_editor')}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                                <button onClick={() => copyToClipboard(project.lyrics)} className="mr-2 text-zinc-500 hover:text-white transition-colors" title="Copiar Letra">
+                                <button onClick={() => copyToClipboard(project.lyrics)} className="mr-2 text-zinc-500 hover:text-white transition-colors" title={t('editor.copy_lyrics')}>
                                     <Copy className="w-3.5 h-3.5" />
                                 </button>
                             </div>
@@ -1099,7 +1108,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             onChange={(e) => !isStreaming && setProject({ ...project, lyrics: e.target.value })}
                             readOnly={isStreaming}
                             className={`flex-1 w-full bg-zinc-900/50 border-x border-b border-white/10 rounded-b-xl p-4 md:p-8 text-base md:text-lg font-mono leading-relaxed focus:outline-none resize-none text-zinc-200 placeholder-zinc-700 custom-scrollbar focus:bg-zinc-900/80 transition-colors ${isStreaming ? 'opacity-90' : ''}`}
-                            placeholder="[Verse 1]&#10;Comece a escrever aqui ou use os botões à esquerda..."
+                            placeholder={t('editor.placeholder_lyrics')}
                             spellCheck={false}
                         />
 
@@ -1118,17 +1127,17 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         onClick={handleGenerateStructure}
                         className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl font-bold text-white shadow-lg shadow-primary/25 flex items-center justify-center gap-2 transition-all active:scale-[0.98] text-xs uppercase tracking-wider"
                     >
-                        <Cpu className="w-4 h-4" /> {t('editor.structure_final') || 'Gerar Prompt Final'}
+                        <Cpu className="w-4 h-4" /> {t('editor.structure_final')}
                     </button>
 
                     {/* Prompt Output */}
                     <div data-tour="structured-prompt" className="flex-1 flex flex-col min-h-[260px]">
                         <div className="flex justify-between items-center mb-2">
                             <label className="text-[10px] font-bold text-green-400 uppercase tracking-wider">
-                                Prompt Estruturado (IAPLAY Studio)
+                                {t('editor.structured_prompt_title')}
                             </label>
                             <div className="flex items-center gap-1.5">
-                                <button onClick={() => copyToClipboard(project.promptFinal || generatedPrompt)} className="text-zinc-500 hover:text-white transition-colors" title="Copiar Prompt">
+                                <button onClick={() => copyToClipboard(project.promptFinal || generatedPrompt)} className="text-zinc-500 hover:text-white transition-colors" title={t('common.copy')}>
                                     <Copy className="w-3.5 h-3.5" />
                                 </button>
                             </div>
@@ -1173,7 +1182,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 className="text-[10px] bg-primary/20 hover:bg-primary/30 border border-primary/40 px-2 py-0.5 rounded text-primary hover:text-white transition-colors flex items-center gap-1 font-bold"
                             >
                                 <Sparkles className="w-3 h-3" />
-                                Sintetizar Style Description
+                                {t('editor.style_description_architect')}
                             </button>
                         </div>
                         <div className="relative">
@@ -1189,7 +1198,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 }}
                                 rows={3}
                                 className="w-full bg-black/60 border border-white/10 rounded-xl p-3 text-[11px] text-zinc-200 focus:outline-none focus:border-primary/50 resize-y custom-scrollbar leading-relaxed font-mono"
-                                placeholder="Style Description conciso em inglês gerado pelo Style Description Architect (máx 979 caracteres)..."
+                                placeholder={t('editor.style_description_placeholder')}
                             />
                         </div>
                         <div className="flex gap-2 mt-2">
@@ -1198,7 +1207,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 className="flex-1 py-1.5 bg-zinc-800 hover:bg-zinc-700 rounded text-[10px] font-bold text-zinc-300 hover:text-white transition-colors flex items-center justify-center gap-1.5"
                             >
                                 <Copy className="w-3 h-3" />
-                                Copiar Style Description
+                                {t('editor.copy_style_description')}
                             </button>
                         </div>
                     </div>
@@ -1209,19 +1218,19 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             <div className="flex items-center gap-2">
                                 <Music className="w-4 h-4 text-primary" />
                                 <span className="text-[11px] font-bold text-white uppercase tracking-wider">
-                                    YuE2 Neural (Local)
+                                    {t('editor.yue_neural_local')}
                                 </span>
                             </div>
                             <span className={`flex items-center gap-1 text-[9px] font-medium px-2 py-0.5 rounded-full border ${
                                 maestroOnline ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-zinc-800 text-zinc-500 border-white/5'
                             }`}>
                                 <span className={`w-1.5 h-1.5 rounded-full ${maestroOnline ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
-                                {maestroOnline ? 'YuE2 Pronto' : 'YuE2 Offline'}
+                                {maestroOnline ? t('editor.yue_ready') : t('editor.yue_offline')}
                             </span>
                         </div>
 
                         <p className="text-[10px] text-zinc-400 leading-snug">
-                            Produza a faixa musical completa (Vocal + Instrumental em 48kHz) diretamente na sua GPU com o motor neural YuE2 do IAPLAY.
+                            {t('editor.yue_neural_desc')}
                         </p>
 
                         <button
@@ -1229,18 +1238,18 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             onClick={() => setShowYuEModal(true)}
                             className="w-full py-2.5 bg-primary hover:bg-[#e05626] text-white rounded-lg text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-primary/20 transition-all active:scale-[0.98]"
                         >
-                            <Wand2 className="w-3.5 h-3.5" /> Gerar Música com YuE2
+                            <Wand2 className="w-3.5 h-3.5" /> {t('editor.yue_generate_action')}
                         </button>
 
                         {project.tracks && project.tracks.length > 0 && (
                             <div className="text-[10px] text-zinc-400 pt-1.5 border-t border-white/5 flex items-center justify-between">
-                                <span>Faixas prontas: <strong className="text-white">{project.tracks.length}</strong></span>
+                                <span>{t('editor.tracks_ready')} <strong className="text-white">{project.tracks.length}</strong></span>
                                 <button
                                     type="button"
                                     onClick={() => setShowYuEModal(true)}
                                     className="text-primary hover:underline text-[10px] font-medium"
                                 >
-                                    Ouvir no Player →
+                                    {t('editor.listen_in_player')}
                                 </button>
                             </div>
                         )}
@@ -1252,11 +1261,11 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             <label className="text-[10px] font-bold text-zinc-500 uppercase block">{t('editor.tools')}</label>
                             {hasStructuredPrompt ? (
                                 <span className="text-[9px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.5 rounded-full">
-                                    Disponível
+                                    {t('editor.tools_available')}
                                 </span>
                             ) : (
                                 <span className="text-[9px] font-medium text-zinc-500 bg-white/5 border border-white/5 px-1.5 py-0.5 rounded-full">
-                                    Requer Prompt Final
+                                    {t('editor.tools_requires_final')}
                                 </span>
                             )}
                         </div>
@@ -1281,7 +1290,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                             {t('editor.detailed_instructions')}
                             {hasStructuredPrompt && (
                                 <span className="text-[10px] text-primary/80 font-normal">
-                                    (Personalizar)
+                                    {t('editor.customize_section')}
                                 </span>
                             )}
                         </button>
@@ -1289,7 +1298,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         <div className="relative">
                             <input
                                 className="w-full bg-black border border-white/10 rounded-lg p-2 text-xs text-white placeholder-zinc-700 pr-16"
-                                placeholder="Ex: Deixe mais agressivo, voz rasgada..."
+                                placeholder={t('editor.remix_placeholder') || "Ex: Deixe mais agressivo, voz rasgada..."}
                                 value={customInstruction}
                                 onChange={(e) => setCustomInstruction(e.target.value)}
                                 onKeyDown={(e) => {
@@ -1314,7 +1323,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                     }}
                                     className="absolute right-1.5 top-1.5 px-2 py-0.5 bg-primary/20 hover:bg-primary text-primary hover:text-white rounded text-[10px] font-bold transition-colors"
                                 >
-                                    Abrir
+                                    {t('editor.open_action')}
                                 </button>
                             )}
                         </div>
@@ -1326,7 +1335,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         className="w-full py-3.5 bg-primary hover:bg-[#e05626] rounded-xl text-xs font-bold flex items-center justify-center gap-2 border border-primary/30 mt-auto transition-colors text-white shadow-lg shadow-primary/25"
                     >
                         <Music className="w-4 h-4 text-white" />
-                        Produzir Música no YuE2 (IAPLAY Studio)
+                        {t('editor.produce_music_yue2')}
                     </button>
                 </div>
 
@@ -1337,21 +1346,21 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all ${activeTab === 'controls' ? 'bg-primary text-white shadow-lg shadow-primary/40' : 'bg-white/5 text-zinc-400'}`}
                     >
                         <Sliders className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase">Controles</span>
+                        <span className="text-[10px] font-bold uppercase">{t('editor.tab_controls')}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('lyrics')}
                         className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all ${activeTab === 'lyrics' ? 'bg-primary text-white shadow-lg shadow-primary/40' : 'bg-white/5 text-zinc-400'}`}
                     >
                         <FileText className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase">Letra</span>
+                        <span className="text-[10px] font-bold uppercase">{t('editor.tab_lyrics')}</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('output')}
                         className={`flex-1 py-3 px-2 rounded-xl flex flex-col items-center gap-1 transition-all ${activeTab === 'output' ? 'bg-primary text-white shadow-lg shadow-primary/40' : 'bg-white/5 text-zinc-400'}`}
                     >
                         <Cpu className="w-4 h-4" />
-                        <span className="text-[10px] font-bold uppercase">Prompt Final</span>
+                        <span className="text-[10px] font-bold uppercase">{t('editor.tab_output')}</span>
                     </button>
                 </div>
 
@@ -1374,7 +1383,15 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                         <Loader2 className="w-16 h-16 text-primary animate-spin relative z-10" />
                     </div>
                     <h2 className="text-2xl font-bold text-white mt-8 mb-2">{loadingMessage}</h2>
-                    <p className="text-zinc-500 text-sm">Aguarde um momento...</p>
+                    <p className="text-zinc-300 text-sm max-w-lg leading-relaxed">
+                        {aiProvider === AIProvider.OLLAMA 
+                            ? t('editor.ollama_waiting_msg')
+                            : t('editor.cloud_waiting_msg')}
+                    </p>
+                    <div className="mt-5 flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 text-xs text-zinc-300">
+                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                        <span>{aiProvider === AIProvider.OLLAMA ? t('editor.ollama_waiting_sub') : t('editor.cloud_waiting_sub')}</span>
+                    </div>
                 </div>
             )}
 
@@ -1387,7 +1404,7 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                 <div className="flex items-start gap-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                                     <Key className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                                     <div className="text-xs text-zinc-300 space-y-1">
-                                        <p className="font-bold text-white text-sm">Chave de IA Não Configurada</p>
+                                        <p className="font-bold text-white text-sm">{t('editor.missing_key_title')}</p>
                                         <p className="leading-relaxed text-zinc-300">{modalConfig.title}</p>
                                     </div>
                                 </div>
@@ -1401,26 +1418,28 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                         }}
                                         className="w-full py-3 bg-primary text-white text-xs font-bold rounded-xl hover:bg-[#e05626] transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary/20"
                                     >
-                                        <Key className="w-4 h-4" /> Ir para Configurações (Inserir Chave)
+                                        <Key className="w-4 h-4" /> {t('editor.btn_settings_key')}
                                     </button>
 
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setModalConfig(prev => ({ ...prev, isOpen: false }));
-                                            handleSelectProvider(AIProvider.OLLAMA);
-                                        }}
-                                        className="w-full py-2.5 bg-zinc-900 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        🦙 Alternar para Ollama (Local / Sem Chave)
-                                    </button>
+                                    {isOllamaOnline && (
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setModalConfig(prev => ({ ...prev, isOpen: false }));
+                                                handleSelectProvider(AIProvider.OLLAMA);
+                                            }}
+                                            className="w-full py-2.5 bg-zinc-900 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded-xl hover:bg-emerald-500/10 transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            🦙 {t('editor.btn_ollama_local')}
+                                        </button>
+                                    )}
 
                                     <button
                                         type="button"
                                         onClick={() => modalConfig.onConfirm('')}
                                         className="w-full py-2 text-zinc-500 hover:text-zinc-300 text-xs transition-colors text-center"
                                     >
-                                        Fechar
+                                        {t('common.close')}
                                     </button>
                                 </div>
                             </div>
@@ -1457,14 +1476,14 @@ export const Editor: React.FC<EditorProps> = ({ project, setProject, onSave, sav
                                             className="px-4 py-2 rounded-lg text-xs font-bold text-zinc-400 hover:text-white bg-transparent transition-colors"
                                             onClick={() => modalConfig.onConfirm('')}
                                         >
-                                            Cancelar
+                                            {t('common.cancel')}
                                         </button>
                                     )}
                                     <button
                                         className="px-5 py-2 min-w-[100px] rounded-lg text-xs font-bold text-white bg-primary hover:bg-[#e05626] shadow-lg shadow-primary/20 transition-all active:scale-95"
                                         onClick={() => modalConfig.onConfirm(modalConfig.value)}
                                     >
-                                        {modalConfig.type === 'prompt' ? 'Confirmar' : modalConfig.type === 'select' ? 'Escolher' : 'OK'}
+                                        {modalConfig.type === 'prompt' ? t('common.confirm_action') : modalConfig.type === 'select' ? (t('common.choose') || 'Escolher') : t('common.ok')}
                                     </button>
                                 </div>
                             </>

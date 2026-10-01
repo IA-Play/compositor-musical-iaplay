@@ -81,14 +81,32 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const t = (key: string): string => {
     const keys = key.split('.');
-    let value: any = TRANSLATIONS[language];
     
+    // 1. Try selected language
+    let value: any = TRANSLATIONS[language];
     for (const k of keys) {
       value = value?.[k];
-      if (!value) break;
+      if (value === undefined || value === null) break;
     }
+    if (value !== undefined && value !== null && typeof value === 'string') return value;
 
-    return value || key;
+    // 2. Fallback to Portuguese (default author language)
+    let fallbackPt: any = TRANSLATIONS[AppLanguage.PT];
+    for (const k of keys) {
+      fallbackPt = fallbackPt?.[k];
+      if (fallbackPt === undefined || fallbackPt === null) break;
+    }
+    if (fallbackPt !== undefined && fallbackPt !== null && typeof fallbackPt === 'string') return fallbackPt;
+
+    // 3. Fallback to English
+    let fallbackEn: any = TRANSLATIONS[AppLanguage.EN];
+    for (const k of keys) {
+      fallbackEn = fallbackEn?.[k];
+      if (fallbackEn === undefined || fallbackEn === null) break;
+    }
+    if (fallbackEn !== undefined && fallbackEn !== null && typeof fallbackEn === 'string') return fallbackEn;
+
+    return key;
   };
 
   return (

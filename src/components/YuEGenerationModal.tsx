@@ -31,6 +31,7 @@ import {
 } from '../services/maestroService';
 import { parseStructuredPrompt } from '../services/aiService';
 import { YuETrack } from '../types';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface YuEGenerationModalProps {
     isOpen: boolean;
@@ -53,6 +54,8 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
     onTrackSaved,
     existingTracks = []
 }) => {
+    const { t } = useLanguage();
+
     // Form Inputs
     const [lyrics, setLyrics] = useState(initialLyrics);
     const [style, setStyle] = useState(initialStyle);
@@ -525,14 +528,14 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                             <div>
                                 <div className="flex items-center gap-2">
                                     <h2 className="text-base md:text-lg font-bold text-white flex items-center gap-2">
-                                        Produção Musical YuE2
+                                        {t('yue.title')}
                                         <span className="text-[10px] px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 font-mono font-bold">
-                                            IAPLAY Studio
+                                            {t('yue.badge')}
                                         </span>
                                     </h2>
                                 </div>
                                 <p className="text-xs text-zinc-400">
-                                    Síntese neural completa (Voz + Instrumental estéreo 48kHz) diretamente na sua GPU
+                                    {t('yue.subtitle')}
                                 </p>
                             </div>
                         </div>
@@ -542,13 +545,13 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                             <div className="flex items-center gap-2 px-2.5 py-1 rounded-full bg-black/50 border border-white/10 text-xs">
                                 <span className={`w-2 h-2 rounded-full ${maestroStatus.online ? 'bg-emerald-400 animate-pulse' : 'bg-red-500'}`} />
                                 <span className="text-[11px] font-medium text-zinc-300">
-                                    {maestroStatus.online ? 'YuE2 Online' : 'YuE2 Offline'}
+                                    {maestroStatus.online ? t('yue.online') : t('yue.offline')}
                                 </span>
                                 <button
                                     onClick={verifyConnection}
                                     disabled={isCheckingStatus || isCheckingModel}
                                     className="text-zinc-400 hover:text-white transition-colors"
-                                    title="Verificar conexão com o YuE2 Local"
+                                    title={t('yue.verify_connection')}
                                 >
                                     <RefreshCw className={`w-3 h-3 ${(isCheckingStatus || isCheckingModel) ? 'animate-spin' : ''}`} />
                                 </button>
@@ -563,20 +566,33 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                         </div>
                     </div>
 
+                    {/* Pipeline Loading / Memory Allocation Notice */}
+                    {maestroStatus.online && maestroStatus.isLoadingPipeline && (
+                        <div className="px-5 py-3 bg-amber-500/15 border-b border-amber-500/30 flex items-center gap-3 text-xs text-amber-200">
+                            <RefreshCw className="w-4 h-4 text-amber-400 animate-spin shrink-0" />
+                            <div>
+                                <p className="font-bold text-white">{t('yue.loading_pipeline')}</p>
+                                <p className="text-[11px] text-amber-300/80">
+                                    {maestroStatus.pipelineLoadingPhase || t('yue.loading_pipeline_desc')}
+                                </p>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Offline Warning Banner */}
                     {!maestroStatus.online && (
                         <div className="px-5 py-3 bg-amber-500/10 border-b border-amber-500/20 flex items-center justify-between text-xs text-amber-300">
                             <div className="flex items-center gap-2">
                                 <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
                                 <span>
-                                    Motor YuE2 Local (porta 42024 / 42003) não detectado. Inicie o IAPLAY via Pinokio ou execute <code className="text-amber-200">server\start_server.bat</code>.
+                                    {t('yue.offline_warning')}
                                 </span>
                             </div>
                             <button
                                 onClick={verifyConnection}
                                 className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 font-medium rounded-lg text-[11px] border border-amber-500/30 transition-colors shrink-0"
                             >
-                                Tentar Conectar
+                                {t('yue.btn_reconnect')}
                             </button>
                         </div>
                     )}
@@ -587,7 +603,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                             <div className="flex items-center justify-between text-xs">
                                 <div className="flex items-center gap-2 text-blue-300 font-semibold">
                                     <RefreshCw className="w-4 h-4 text-blue-400 animate-spin" />
-                                    <span>Baixando Modelos YuE2 3B Diretamente: <code className="text-white font-mono">{modelDownloadProgress?.current_file || 'Iniciando...'}</code></span>
+                                    <span>{t('yue.downloading_models')} <code className="text-white font-mono">{modelDownloadProgress?.current_file || t('yue.starting')}</code></span>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {modelDownloadProgress?.speed && (
@@ -600,7 +616,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                         onClick={handleCancelModelDownload}
                                         className="text-[10px] text-red-400 hover:text-red-300 underline"
                                     >
-                                        Cancelar
+                                        {t('yue.cancel')}
                                     </button>
                                 </div>
                             </div>
@@ -611,7 +627,9 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 />
                             </div>
                             <p className="text-[10px] text-zinc-400">
-                                Arquivo {modelDownloadProgress?.downloaded_files || 0} de {modelDownloadProgress?.total_files || 5} · Os pesos serão salvos na pasta <code className="text-zinc-300">ckpts</code> do IAPLAY.
+                                {t('yue.download_files_status')
+                                    .replace('{downloaded}', String(modelDownloadProgress?.downloaded_files || 0))
+                                    .replace('{total}', String(modelDownloadProgress?.total_files || 5))}
                             </p>
                         </div>
                     )}
@@ -621,9 +639,9 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                             <div className="flex items-center gap-2.5">
                                 <HardDrive className="w-4 h-4 text-amber-400 shrink-0" />
                                 <div>
-                                    <p className="font-semibold text-white">Modelos Neurais YuE2 3B não instalados (~4.6 GB)</p>
+                                    <p className="font-semibold text-white">{t('yue.models_not_installed')}</p>
                                     <p className="text-[11px] text-amber-200/80">
-                                        Baixe os pesos oficiais para sintetizar músicas localmente no IAPLAY Studio.
+                                        {t('yue.models_not_installed_desc')}
                                     </p>
                                 </div>
                             </div>
@@ -631,7 +649,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 onClick={handleStartModelDownload}
                                 className="px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-black font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-lg shadow-orange-500/20 transition-all shrink-0 active:scale-95"
                             >
-                                <CloudDownload className="w-4 h-4" /> Baixar Modelos Diretamente
+                                <CloudDownload className="w-4 h-4" /> {t('yue.btn_download_models')}
                             </button>
                         </div>
                     )}
@@ -656,7 +674,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                             <div className="flex flex-col">
                                 <div className="flex items-center justify-between mb-1.5">
                                     <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                                        <FileText className="w-3.5 h-3.5 text-primary" /> Letra da Música
+                                        <FileText className="w-3.5 h-3.5 text-primary" /> {t('yue.lyrics_label')}
                                     </label>
                                     <div className="flex items-center gap-2">
                                         {structuredPrompt && structuredPrompt.trim() && (
@@ -664,10 +682,10 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                                 type="button"
                                                 onClick={syncFromStructuredPrompt}
                                                 className="flex items-center gap-1 text-[10px] text-amber-400 hover:text-amber-300 font-semibold bg-amber-500/10 hover:bg-amber-500/20 px-2 py-0.5 rounded border border-amber-500/30 transition-all active:scale-95"
-                                                title="Puxar letra e estilo gerados na estruturação do prompt"
+                                                title={t('yue.sync_structure_title')}
                                             >
                                                 <Sparkles className="w-3 h-3 text-amber-400" />
-                                                Sincronizar Estrutura
+                                                {t('yue.btn_sync_structure')}
                                             </button>
                                         )}
                                         <span className="text-[10px] text-zinc-500 font-mono">Tags: [Verse], [Chorus]</span>
@@ -678,12 +696,12 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                     onChange={(e) => setLyrics(e.target.value)}
                                     disabled={isGenerating}
                                     rows={8}
-                                    placeholder="[Verse 1]&#10;Letra cantável aqui...&#10;&#10;[Chorus]&#10;Refrão marcante..."
+                                    placeholder={t('yue.lyrics_placeholder')}
                                     className="w-full flex-1 bg-zinc-900/90 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-mono custom-scrollbar resize-none leading-relaxed"
                                 />
                                 <div className="mt-1 flex items-center justify-between text-[10px] text-zinc-500">
-                                    <span>Separe estrofes com linha em branco</span>
-                                    <span>{lyrics.length} caracteres</span>
+                                    <span>{t('yue.lyrics_hint')}</span>
+                                    <span>{lyrics.length} {t('yue.characters')}</span>
                                 </div>
                             </div>
 
@@ -692,16 +710,16 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-1.5">
                                         <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                                            <Disc3 className="w-3.5 h-3.5 text-orange-400" /> Estilo Sonoro (YuE2)
+                                            <Disc3 className="w-3.5 h-3.5 text-orange-400" /> {t('yue.style_label')}
                                         </label>
-                                        <span className="text-[10px] text-zinc-500">Gênero, instrumentos, tom</span>
+                                        <span className="text-[10px] text-zinc-500">{t('yue.style_hint')}</span>
                                     </div>
                                     <textarea
                                         value={style}
                                         onChange={(e) => setStyle(e.target.value)}
                                         disabled={isGenerating}
                                         rows={3}
-                                        placeholder="Ex: Brazilian MPB acoustic pop, warm expressive female vocal, nylon guitar, gentle percussion, emotional, 90 BPM"
+                                        placeholder={t('yue.style_placeholder')}
                                         className="w-full bg-zinc-900/90 border border-white/10 rounded-xl p-3 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all custom-scrollbar resize-none"
                                     />
                                 </div>
@@ -710,7 +728,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 <div>
                                     <div className="flex items-center justify-between mb-1">
                                         <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1.5">
-                                            <Clock className="w-3 h-3 text-primary" /> Duração Máxima (Teto)
+                                            <Clock className="w-3 h-3 text-primary" /> {t('yue.duration_label')}
                                         </label>
                                         <span className="text-xs font-mono font-bold text-primary">
                                             {durationSeconds}s ({Math.floor(durationSeconds/60)}m {durationSeconds%60 > 0 ? `${durationSeconds%60}s` : ''})
@@ -728,7 +746,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                     />
                                     <div className="flex items-center justify-between text-[10px] text-zinc-500">
                                         <span>30s</span>
-                                        <span className="text-[10px] text-zinc-500">O YuE2 encerra quando a música terminar</span>
+                                        <span className="text-[10px] text-zinc-500">{t('yue.duration_hint')}</span>
                                         <span>600s (10m)</span>
                                     </div>
                                     <div className="flex items-center gap-1 mt-1.5 flex-wrap">
@@ -762,13 +780,13 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 {/* Modo de Geração YuE2 */}
                                 <div>
                                     <label className="text-xs font-semibold text-zinc-300 block mb-1.5">
-                                        Modo YuE2
+                                        {t('yue.mode_label')}
                                     </label>
                                     <div className="grid grid-cols-3 gap-2">
                                         {[
-                                            { id: 2, label: 'Direto (Áudio)', desc: 'Geração livre padrão' },
-                                            { id: 0, label: 'Melodia + Acordes', desc: 'Planeja harmonia' },
-                                            { id: 1, label: 'Apenas Melodia', desc: 'Arranjo livre' }
+                                            { id: 2, label: t('yue.mode_direct'), desc: t('yue.mode_direct_desc') },
+                                            { id: 0, label: t('yue.mode_chords'), desc: t('yue.mode_chords_desc') },
+                                            { id: 1, label: t('yue.mode_melody'), desc: t('yue.mode_melody_desc') }
                                         ].map((m) => (
                                             <button
                                                 key={m.id}
@@ -799,7 +817,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                             <div className="flex items-center gap-2">
                                                 <Music2 className="w-4 h-4 text-amber-400" />
                                                 <span className="text-xs font-bold text-amber-200">
-                                                    Áudio de Referência (Cover / Transcrição)
+                                                    {t('yue.audio_guide_title')}
                                                 </span>
                                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-mono">
                                                     SheetSage2 + MERT2
@@ -812,15 +830,15 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                                     disabled={isGenerating}
                                                     className="text-[10px] text-zinc-400 hover:text-red-400 flex items-center gap-1 transition-colors"
                                                 >
-                                                    <X className="w-3 h-3" /> Remover
+                                                    <X className="w-3 h-3" /> {t('yue.btn_remove_audio')}
                                                 </button>
                                             )}
                                         </div>
 
                                         <p className="text-[11px] text-zinc-400 leading-relaxed">
                                             {modelMode === 0
-                                                ? 'Envie um áudio para o SheetSage2 extrair melodia e acordes completos, gerando um cover harmonizado no seu novo estilo.'
-                                                : 'Envie um áudio para transcrever apenas a melodia principal, dando liberdade criativa para o novo arranjo instrumental.'}
+                                                ? t('yue.guide_chords_desc')
+                                                : t('yue.guide_melody_desc')}
                                         </p>
 
                                         {audioGuideData ? (
@@ -834,7 +852,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                                             {audioGuideData.original_name}
                                                         </div>
                                                         <div className="text-[10px] text-amber-400/90 flex items-center gap-1">
-                                                            <CheckCircle2 className="w-3 h-3" /> Áudio pronto para transcrição e cover
+                                                            <CheckCircle2 className="w-3 h-3" /> {t('yue.audio_ready')}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -864,19 +882,19 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                                     {isUploadingAudio ? (
                                                         <>
                                                             <RefreshCw className="w-4 h-4 text-amber-400 animate-spin" />
-                                                            <span className="text-xs font-semibold">Enviando áudio para o YuE2...</span>
+                                                            <span className="text-xs font-semibold">{t('yue.uploading_audio')}</span>
                                                         </>
                                                     ) : (
                                                         <>
                                                             <Upload className="w-4 h-4 text-amber-400" />
                                                             <span className="text-xs font-semibold">
-                                                                Clique para fazer upload de música para Cover (MP3, WAV, M4A)
+                                                                {t('yue.upload_audio_placeholder')}
                                                             </span>
                                                         </>
                                                     )}
                                                 </div>
                                                 <div className="text-[10px] text-zinc-500 mt-1">
-                                                    Opcional: se não enviar áudio, a partitura será composta livremente pela IA · Suporta até 10 minutos (600s)
+                                                    {t('yue.upload_audio_hint')}
                                                 </div>
                                             </div>
                                         )}
@@ -891,11 +909,11 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                         </div>
                                         <div>
                                             <div className="text-[11px] font-bold text-white flex items-center gap-1.5">
-                                                Anti-Detecção IA & Masterização
+                                                {t('yue.humanizer_title')}
                                                 <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-300 font-mono">24-bit</span>
                                             </div>
                                             <div className="text-[10px] text-indigo-200/70 leading-tight">
-                                                Remove marcas d'água, metadados e injeta calor de fita
+                                                {t('yue.humanizer_desc')}
                                             </div>
                                         </div>
                                     </div>
@@ -919,7 +937,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                         className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 font-medium transition-colors"
                                     >
                                         <Sliders className="w-3 h-3 text-primary" />
-                                        {showAdvanced ? 'Ocultar configurações técnicas' : 'Ajustes finos (Passos, Seed, Partitura ABC)'}
+                                        {showAdvanced ? t('yue.hide_advanced') : t('yue.show_advanced')}
                                     </button>
                                 </div>
                             </div>
@@ -936,7 +954,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
-                                            Passos de Inferência (Sampling Steps)
+                                            {t('yue.steps_label')}
                                         </label>
                                         <div className="flex items-center gap-3">
                                             <input
@@ -951,19 +969,19 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                             />
                                             <span className="text-xs font-mono font-bold text-primary w-8">{numSteps}</span>
                                         </div>
-                                        <span className="text-[10px] text-zinc-500">Padrão recomendado: 32 passos</span>
+                                        <span className="text-[10px] text-zinc-500">{t('yue.steps_hint')}</span>
                                     </div>
 
                                     <div>
                                         <label className="text-[11px] font-semibold text-zinc-300 flex items-center gap-1 mb-1">
-                                            <Hash className="w-3 h-3 text-primary" /> Seed Manual (Opcional)
+                                            <Hash className="w-3 h-3 text-primary" /> {t('yue.seed_label')}
                                         </label>
                                         <input
                                             type="text"
                                             value={seed}
                                             onChange={(e) => setSeed(e.target.value.replace(/[^0-9]/g, ''))}
                                             disabled={isGenerating}
-                                            placeholder="Aleatório se vazio (ex: 84920194)"
+                                            placeholder={t('yue.seed_placeholder')}
                                             className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary font-mono"
                                         />
                                     </div>
@@ -971,14 +989,14 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
 
                                 <div>
                                     <label className="text-[11px] font-semibold text-zinc-300 block mb-1">
-                                        Partitura / Notação ABC Nativa (Opcional para Modos de Planejamento)
+                                        {t('yue.abc_label')}
                                     </label>
                                     <input
                                         type="text"
                                         value={abcScore}
                                         onChange={(e) => setAbcScore(e.target.value)}
                                         disabled={isGenerating || modelMode === 2}
-                                        placeholder={modelMode === 2 ? "Desativado em Modo Direto" : "Ex: X:1\nT:Melody\nM:4/4\nK:C\n..."}
+                                        placeholder={modelMode === 2 ? t('yue.abc_disabled') : "Ex: X:1\nT:Melody\nM:4/4\nK:C\n..."}
                                         className="w-full bg-zinc-900 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-white placeholder-zinc-600 focus:outline-none focus:border-primary font-mono disabled:opacity-40"
                                     />
                                 </div>
@@ -996,7 +1014,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                     <div className="flex items-center gap-2">
                                         <RefreshCw className="w-4 h-4 text-primary animate-spin" />
                                         <span className="font-bold text-white">
-                                            {progressData?.phase || "Gerando música no YuE2..."}
+                                            {progressData?.phase || t('yue.generating_music')}
                                         </span>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -1011,10 +1029,23 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                             onClick={handleCancel}
                                             className="px-2 py-0.5 rounded bg-red-500/20 hover:bg-red-500/30 text-red-300 text-[10px] font-bold border border-red-500/30 transition-colors"
                                         >
-                                            Cancelar
+                                            {t('yue.cancel')}
                                         </button>
                                     </div>
                                 </div>
+
+                                {/* Aviso de Alocação de Tensores / Espera por Hardware */}
+                                {(progressData?.status === 'loading' || (progressData?.progress || 0) <= 0.08 || (progressData?.phase && progressData.phase.toLowerCase().includes('carregando'))) && (
+                                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl space-y-1.5 text-xs text-amber-200">
+                                        <div className="flex items-center gap-2 font-bold text-amber-300">
+                                            <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                                            <span>{t('yue.loading_tensors').replace('{hardware}', maestroStatus.gpu || 'Hardware')}</span>
+                                        </div>
+                                        <p className="text-[11px] text-zinc-300 leading-relaxed">
+                                            {t('yue.hardware_loading_wait')}
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Barra de progresso */}
                                 <div className="w-full bg-zinc-800 rounded-full h-2.5 overflow-hidden">
@@ -1025,8 +1056,8 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 </div>
 
                                 <div className="flex items-center justify-between text-[10px] text-zinc-400 font-mono">
-                                    <span>{progressData?.message || "Processando tokens e decodificando VAE..."}</span>
-                                    <span>Modelo: YuE2 3B Neural (48kHz Stereo)</span>
+                                    <span>{progressData?.message || t('yue.processing_tokens')}</span>
+                                    <span>{t('yue.model_info')}</span>
                                 </div>
                             </motion.div>
                         )}
@@ -1063,14 +1094,14 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                                 </span>
                                                 {currentAudioUrl?.includes('_humanized') && (
                                                     <span className="text-[9px] px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 font-mono flex items-center gap-1">
-                                                        <ShieldCheck className="w-2.5 h-2.5" /> Anti-IA
+                                                        <ShieldCheck className="w-2.5 h-2.5" /> {t('yue.humanized_badge')}
                                                     </span>
                                                 )}
                                             </div>
                                             <div className="text-[11px] text-zinc-400">
                                                 {currentAudioUrl?.includes('_humanized')
-                                                    ? 'Áudio humanizado: zero metadados, corte ultrassônico e calor de fita.'
-                                                    : 'Música gerada com sucesso pelo YuE2!'}
+                                                    ? t('yue.humanized_success_desc')
+                                                    : t('yue.generated_success')}
                                             </div>
                                         </div>
                                     </div>
@@ -1089,7 +1120,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                             ) : (
                                                 <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
                                             )}
-                                            {isHumanizing ? 'Limpando...' : 'Humanizar / Anti-IA'}
+                                            {isHumanizing ? t('yue.humanizing') : t('yue.btn_humanize')}
                                         </button>
 
                                         <button
@@ -1097,7 +1128,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                             onClick={() => downloadAudioFileDirectly(currentAudioUrl, `${projectTitle || 'musica-yue2'}.wav`)}
                                             className="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg font-bold text-white text-xs flex items-center gap-1.5 shadow-lg shadow-emerald-600/30 transition-all active:scale-95"
                                         >
-                                            <Download className="w-3.5 h-3.5" /> Baixar WAV
+                                            <Download className="w-3.5 h-3.5" /> {t('yue.btn_download_wav')}
                                         </button>
                                     </div>
                                 </div>
@@ -1149,28 +1180,28 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                         {existingTracks.length > 0 && (
                             <div className="space-y-2 pt-2 border-t border-white/5">
                                 <div className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center justify-between">
-                                    <span>Faixas Geradas Neste Projeto ({existingTracks.length})</span>
+                                    <span>{t('yue.project_tracks')} ({existingTracks.length})</span>
                                 </div>
 
                                 <div className="space-y-1.5 max-h-36 overflow-y-auto custom-scrollbar">
-                                    {existingTracks.map((t) => (
+                                    {existingTracks.map((tTrack) => (
                                         <div
-                                            key={t.id}
+                                            key={tTrack.id}
                                             className="flex items-center justify-between p-2.5 bg-zinc-900/60 hover:bg-zinc-900 border border-white/5 rounded-lg transition-colors text-xs"
                                         >
                                             <div className="flex items-center gap-2 truncate pr-2">
                                                 <Music className="w-3.5 h-3.5 text-primary shrink-0" />
-                                                <span className="text-zinc-200 font-medium truncate">{t.name}</span>
+                                                <span className="text-zinc-200 font-medium truncate">{tTrack.name}</span>
                                                 <span className="text-[10px] text-zinc-500 font-mono">
-                                                    {new Date(t.createdAt).toLocaleTimeString()}
+                                                    {new Date(tTrack.createdAt).toLocaleTimeString()}
                                                 </span>
                                             </div>
 
                                             <div className="flex items-center gap-1.5 shrink-0">
                                                 <button
                                                     onClick={() => {
-                                                        setCurrentAudioUrl(t.audioUrl);
-                                                        setCurrentAudioTitle(t.name);
+                                                        setCurrentAudioUrl(tTrack.audioUrl);
+                                                        setCurrentAudioTitle(tTrack.name);
                                                         if (audioRef.current) {
                                                             audioRef.current.currentTime = 0;
                                                             audioRef.current.play().catch(() => {});
@@ -1179,12 +1210,12 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                                     }}
                                                     className="px-2 py-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded text-[11px] font-medium flex items-center gap-1 transition-colors"
                                                 >
-                                                    <Play className="w-3 h-3" /> Ouvir
+                                                    <Play className="w-3 h-3" /> {t('yue.btn_play')}
                                                 </button>
 
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleHumanizeTrack(t.name)}
+                                                    onClick={() => handleHumanizeTrack(tTrack.name)}
                                                     disabled={isHumanizing}
                                                     className="p-1.5 rounded bg-indigo-500/10 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/20 transition-colors"
                                                     title="Remover digitais de IA e masterizar esta faixa"
@@ -1194,7 +1225,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
 
                                                 <button
                                                     type="button"
-                                                    onClick={() => downloadAudioFileDirectly(t.audioUrl, `${t.name}.wav`)}
+                                                    onClick={() => downloadAudioFileDirectly(tTrack.audioUrl, `${tTrack.name}.wav`)}
                                                     className="p-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white transition-colors"
                                                     title="Baixar áudio WAV diretamente"
                                                 >
@@ -1213,7 +1244,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                     <div className="p-4 border-t border-white/10 bg-zinc-900/80 flex items-center justify-between">
                         <div className="text-[11px] text-zinc-400 flex items-center gap-2">
                             <Radio className="w-3.5 h-3.5 text-primary" />
-                            <span>Servidor YuE2: <code className="text-zinc-300 font-mono">{maestroStatus.endpoint}</code></span>
+                            <span>{t('yue.server_label')} <code className="text-zinc-300 font-mono">{maestroStatus.endpoint}</code></span>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -1223,7 +1254,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 disabled={isGenerating}
                                 className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-semibold text-zinc-300 transition-colors"
                             >
-                                Fechar
+                                {t('yue.btn_close')}
                             </button>
 
                             {areModelsMissing && !isDownloadingModel ? (
@@ -1233,7 +1264,7 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                     className="px-5 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-black bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 shadow-lg shadow-orange-500/25 transition-all active:scale-95"
                                 >
                                     <CloudDownload className="w-4 h-4" />
-                                    Baixar Modelos YuE2
+                                    {t('yue.btn_download_models_short')}
                                 </button>
                             ) : (
                                 <button
@@ -1248,10 +1279,10 @@ export const YuEGenerationModal: React.FC<YuEGenerationModalProps> = ({
                                 >
                                     <Sparkles className="w-4 h-4" />
                                     {isGenerating
-                                        ? 'Produzindo...'
+                                        ? t('yue.producing')
                                         : isDownloadingModel
-                                            ? 'Baixando Modelos...'
-                                            : '⚡ Gerar Música com YuE2'}
+                                            ? t('yue.downloading_models_btn')
+                                            : t('yue.btn_generate')}
                                 </button>
                             )}
                         </div>

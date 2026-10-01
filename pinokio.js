@@ -1,5 +1,5 @@
 export default {
-  version: "2.0",
+  version: "3.5",
   title: "IAPLAY Studio",
   description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio/Mureka e Geração YuE2 com Transcrição SheetSage2",
   icon: "public/favicon.ico",

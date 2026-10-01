@@ -10,9 +10,23 @@
       }
     },
     {
+      "when": "{{!exists('env')}}",
+      "method": "shell.run",
+      "params": {
+        "message": [
+          "uv venv env --python 3.11 || uv venv env || python -m venv env"
+        ]
+      }
+    },
+    {
       "method": "shell.run",
       "params": {
         "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
         "message": [
           "uv pip install -r server/requirements.txt --index-strategy unsafe-best-match"
         ]
@@ -23,14 +37,25 @@
       "params": {
         "uri": "torch.js",
         "params": {
-          "venv": "env"
+          "venv": "env",
+          "venv_python": "3.11"
         }
+      }
+    },
+    {
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "message": [
+          "python server/download_models.py"
+        ]
       }
     },
     {
       "method": "notify",
       "params": {
-        "html": "Instalação do IAPLAY Studio concluída! Clique em 'Baixar Modelos YuE2' para baixar os pesos neurais ou em 'Iniciar IAPLAY'."
+        "html": "Instalação do IAPLAY Studio concluída com sucesso! Todos os pacotes e modelos neurais YuE2 foram instalados. Clique em 'Iniciar IAPLAY'."
       }
     }
   ]

@@ -1,7 +1,7 @@
 
 import { Project, AIProvider, ArsenalSettings, DetailedInstruction, Language, MusicType, Sentiment, MusicPlatform } from "../types";
 import { getSystemSettings } from "./settingsService";
-import { getOllamaCandidateEndpoints } from "./ollamaService";
+import { getOllamaCandidateEndpoints, startOllamaViaServer, getIsOllamaOnlineSync } from "./ollamaService";
 
 // --- API CLIENTS WITH INTERNAL ROTATION (VIA SECURE BACKEND) ---
 
@@ -137,7 +137,9 @@ const extractKeys = (raw: string | undefined): string[] => {
 };
 
 export const hasKeyForProvider = (provider: AIProvider): boolean => {
-    if (provider === AIProvider.OLLAMA) return true;
+    if (provider === AIProvider.OLLAMA) {
+        return getIsOllamaOnlineSync();
+    }
     const userKeys = getStoredUserKeys();
     const settings = getSystemSettings();
     switch (provider) {
@@ -160,6 +162,45 @@ export const hasKeyForProvider = (provider: AIProvider): boolean => {
         default:
             return false;
     }
+};
+
+export const resolveEffectiveProvider = (preferred?: AIProvider): AIProvider => {
+    // 1. Se o fornecedor preferido foi passado e tem chave configurada (ou Ollama online), usa ele
+    if (preferred && hasKeyForProvider(preferred)) {
+        return preferred;
+    }
+
+    // 2. Tenta recuperar do localStorage a preferência do usuário se estiver configurada
+    try {
+        const saved = localStorage.getItem('iaplay_preferred_provider') as AIProvider;
+        if (saved && hasKeyForProvider(saved)) {
+            return saved;
+        }
+    } catch (e) { }
+
+    // 3. Procura o primeiro provedor em nuvem com chave ativa
+    const cloudPriority = [
+        AIProvider.GOOGLE,
+        AIProvider.GROQ,
+        AIProvider.NVIDIA,
+        AIProvider.OPENROUTER,
+        AIProvider.CEREBRAS,
+        AIProvider.MISTRAL,
+        AIProvider.TOGETHER,
+        AIProvider.OPENAI
+    ];
+
+    for (const p of cloudPriority) {
+        if (hasKeyForProvider(p)) return p;
+    }
+
+    // 4. Se o Ollama estiver confirmado online, pode ser utilizado
+    if (hasKeyForProvider(AIProvider.OLLAMA)) {
+        return AIProvider.OLLAMA;
+    }
+
+    // 5. Fallback padrão: o preferido informado ou Google Gemini
+    return preferred || AIProvider.GOOGLE;
 };
 
 export const getProviderKeyUrl = (provider: AIProvider): string => {
@@ -618,22 +659,39 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
     let activeEndpoint = endpointsToTry[0];
     let installedModels: string[] = [];
 
-    for (const ep of endpointsToTry) {
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3500);
-            const tagsRes = await fetch(`${ep}/api/tags`, { signal: controller.signal }).catch(() => null);
-            clearTimeout(timeoutId);
+    const discoverModels = async () => {
+        for (const ep of endpointsToTry) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3500);
+                const tagsRes = await fetch(`${ep}/api/tags`, { signal: controller.signal }).catch(() => null);
+                clearTimeout(timeoutId);
 
-            if (tagsRes && tagsRes.ok) {
-                const tagsData = await tagsRes.json().catch(() => ({}));
-                if (tagsData.models && Array.isArray(tagsData.models)) {
-                    installedModels = tagsData.models.map((m: any) => m.name || m.model).filter(Boolean);
-                    activeEndpoint = ep;
-                    break;
+                if (tagsRes && tagsRes.ok) {
+                    const tagsData = await tagsRes.json().catch(() => ({}));
+                    if (tagsData.models && Array.isArray(tagsData.models) && tagsData.models.length > 0) {
+                        installedModels = tagsData.models.map((m: any) => m.name || m.model).filter(Boolean);
+                        activeEndpoint = ep;
+                        return true;
+                    }
                 }
-            }
-        } catch (e) {}
+            } catch (e) {}
+        }
+        return false;
+    };
+
+    let hasModels = await discoverModels();
+    if (!hasModels) {
+        // Tenta acordar o Ollama caso esteja fechado ou dormindo
+        const woke = await startOllamaViaServer();
+        if (woke) {
+            await new Promise(r => setTimeout(r, 1500));
+            hasModels = await discoverModels();
+        }
+    }
+
+    if (!hasModels || installedModels.length === 0) {
+        throw new Error("Ollama não está em execução ou não possui modelos instalados no seu computador. Inicie o Ollama ou use um provedor em nuvem gratuito (Google Gemini, Groq ou NVIDIA NIM) nas opções acima.");
     }
 
     // Se temos modelos instalados, verificar se o modelo pedido existe ou fazer fallback inteligente
@@ -727,7 +785,7 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
         throw new Error(`Ollama (${modelToUse}): ${lastErrorDetail}`);
     }
 
-    throw new Error(`Falha ao conectar no Ollama (${activeEndpoint}). Certifique-se de que o aplicativo do Ollama está aberto no seu PC/Pinokio e há pelo menos um modelo disponível (modelo tentado: '${modelToUse}').`);
+    throw new Error(`Ollama (Local): Falha ao conectar ao Ollama (${activeEndpoint}). Certifique-se de que o aplicativo do Ollama está aberto no seu PC/Pinokio e há pelo menos um modelo disponível (modelo tentado: '${modelToUse}'). Você também pode usar provedores em nuvem nas Configurações.`);
 };
 
 
@@ -877,32 +935,37 @@ const executeProvider = async (prompt: string, provider: AIProvider, systemInstr
     }
 };
 
-const unifiedGenerate = async (prompt: string, provider: AIProvider = AIProvider.GOOGLE, systemInstruction?: string): Promise<string> => {
+const unifiedGenerate = async (prompt: string, provider?: AIProvider, systemInstruction?: string): Promise<string> => {
+    const effectiveProvider = resolveEffectiveProvider(provider);
     let primaryErrorMsg = "";
     const fallbackErrors: string[] = [];
 
     try {
-        return await executeProvider(prompt, provider, systemInstruction);
+        return await executeProvider(prompt, effectiveProvider, systemInstruction);
     } catch (primaryError: any) {
         primaryErrorMsg = primaryError.message || String(primaryError);
-        console.warn(`[Fallback] Fornecedor primario (${provider}) falhou:`, primaryErrorMsg);
+        console.warn(`[Fallback] Fornecedor primario (${effectiveProvider}) falhou:`, primaryErrorMsg);
 
-        // Ordem estrategica de fallback para outros provedores disponiveis
+        // Ordem estrategica de fallback APENAS para provedores configurados com chave
         const fallbacks = [
             AIProvider.GOOGLE,
             AIProvider.GROQ,
-            AIProvider.OPENROUTER,
             AIProvider.NVIDIA,
+            AIProvider.OPENROUTER,
             AIProvider.CEREBRAS,
-            AIProvider.OLLAMA,
             AIProvider.MISTRAL,
             AIProvider.TOGETHER,
             AIProvider.OPENAI
-        ].filter(p => p !== provider);
+        ].filter(p => p !== effectiveProvider && hasKeyForProvider(p));
+
+        // Só inclui Ollama no fallback se estiver comprovadamente online
+        if (effectiveProvider !== AIProvider.OLLAMA && hasKeyForProvider(AIProvider.OLLAMA)) {
+            fallbacks.push(AIProvider.OLLAMA);
+        }
 
         for (const fb of fallbacks) {
             try {
-                console.log(`[Fallback] Tentando fornecedor alternativo: ${fb}...`);
+                console.log(`[Fallback] Tentando fornecedor alternativo configurado: ${fb}...`);
                 const result = await executeProvider(prompt, fb, systemInstruction);
                 console.log(`[Fallback] Sucesso com ${fb}!`);
                 return result;
@@ -912,7 +975,7 @@ const unifiedGenerate = async (prompt: string, provider: AIProvider = AIProvider
             }
         }
 
-        const friendlyMsg = friendlyApiError(provider, primaryErrorMsg);
+        const friendlyMsg = friendlyApiError(effectiveProvider, primaryErrorMsg);
         throw new Error(friendlyMsg);
     }
 };
@@ -1009,7 +1072,7 @@ export const generateLyrics = async (
 };
 
 // 3️⃣ — OTIMIZAR LETRA
-export const optimizeLyrics = async (lyrics: string): Promise<string> => {
+export const optimizeLyrics = async (lyrics: string, provider?: AIProvider): Promise<string> => {
     const settings = getSystemSettings();
     let prompt = settings.promptOptimize
         .replace("[IDIOMA]", "Português (Brasil)");
@@ -1019,7 +1082,7 @@ export const optimizeLyrics = async (lyrics: string): Promise<string> => {
     } else {
         prompt += `\n\n[LETRA ORIGINAL]\n${lyrics}`;
     }
-    return await unifiedGenerate(prompt, AIProvider.GOOGLE);
+    return await unifiedGenerate(prompt, provider);
 };
 
 /**
@@ -1468,24 +1531,24 @@ export const parseStructuredPrompt = (raw: string): { styleText: string; lyricsT
 
 // --- OTHERS ---
 
-export const remixStructure = async (currentPrompt: string, instruction: string): Promise<string> => {
+export const remixStructure = async (currentPrompt: string, instruction: string, provider?: AIProvider): Promise<string> => {
     const settings = getSystemSettings();
     const prompt = settings.promptRemix
         .replace("[INSTRUÇÃO]", instruction)
         .replace("[PROMPT ORIGINAL]", currentPrompt);
-    return await unifiedGenerate(prompt, AIProvider.GOOGLE);
+    return await unifiedGenerate(prompt, provider);
 };
 
-export const adjustPromptLength = async (currentPrompt: string, min: number = 100, max: number = 3000): Promise<string> => {
+export const adjustPromptLength = async (currentPrompt: string, min: number = 100, max: number = 3000, provider?: AIProvider): Promise<string> => {
     const settings = getSystemSettings();
     const prompt = settings.promptLength
         .replace("[MIN]", min.toString())
         .replace("[MAX]", max.toString())
         + `\n\nINPUT PROMPT:\n${currentPrompt}`;
-    try { return await unifiedGenerate(prompt, AIProvider.GOOGLE); } catch (e) { return currentPrompt; }
+    try { return await unifiedGenerate(prompt, provider); } catch (e) { return currentPrompt; }
 };
 
-export const compressFinalPrompt = async (currentPrompt: string, provider: AIProvider = AIProvider.GOOGLE): Promise<string> => {
+export const compressFinalPrompt = async (currentPrompt: string, provider?: AIProvider): Promise<string> => {
     const settings = getSystemSettings();
     let prompt = settings.promptCompress;
     if (prompt.includes("[PROMPT ORIGINAL]")) {
@@ -1498,7 +1561,7 @@ export const compressFinalPrompt = async (currentPrompt: string, provider: AIPro
     try { return await unifiedGenerate(prompt, provider); } catch (e) { throw new Error("Falha ao comprimir."); }
 };
 
-export const generateStyleTags = async (fullPrompt: string, provider: AIProvider = AIProvider.GOOGLE): Promise<string> => {
+export const generateStyleTags = async (fullPrompt: string, provider?: AIProvider): Promise<string> => {
     const settings = getSystemSettings();
     let prompt = settings.promptStyles || "";
     if (prompt.includes("[PROMPT COMPLETO]")) {
@@ -1536,7 +1599,7 @@ export const generateStyleTags = async (fullPrompt: string, provider: AIProvider
     return result;
 };
 
-export const analyzeBriefing = async (briefing: string): Promise<any> => {
+export const analyzeBriefing = async (briefing: string, provider?: AIProvider): Promise<any> => {
     const settings = getSystemSettings();
     let prompt = settings.promptAnalyze;
     if (prompt.includes("[RAW USER IDEA]")) {
@@ -1547,7 +1610,7 @@ export const analyzeBriefing = async (briefing: string): Promise<any> => {
         prompt += `\n\n${briefing}`;
     }
     try {
-        const textRaw = await unifiedGenerate(prompt, AIProvider.GOOGLE);
+        const textRaw = await unifiedGenerate(prompt, provider);
         const jsonMatch = textRaw.match(/\{[\s\S]*\}/);
         if (!jsonMatch) throw new Error("No JSON");
         const result = JSON.parse(jsonMatch[0]);
@@ -1571,17 +1634,17 @@ export const analyzeBriefing = async (briefing: string): Promise<any> => {
     } catch (e) { return { global: {}, arsenal: {}, detailedInstructions: [] }; }
 };
 
-export const fetchArtistSongs = async (artistName: string): Promise<string[]> => {
+export const fetchArtistSongs = async (artistName: string, provider?: AIProvider): Promise<string[]> => {
     const prompt = `List 5 iconic songs by "${artistName}". JSON array of strings only.`;
     try {
-        const textRaw = await unifiedGenerate(prompt, AIProvider.GOOGLE);
+        const textRaw = await unifiedGenerate(prompt, provider);
         const text = textRaw?.replace(/```json|```/g, '').trim() || "[]";
         return JSON.parse(text);
     } catch (e) { return []; }
 };
 
 // FIX: Aceitar e usar os estilos do projeto para evitar alucinações de gênero
-export const generateByArtistFlow = async (artistName: string, styles: string[] = [], topic: string) => {
+export const generateByArtistFlow = async (artistName: string, styles: string[] = [], topic: string, provider?: AIProvider) => {
     const settings = getSystemSettings();
     const styleContext = styles.length > 0 ? styles.join(", ") : "Livre";
 
@@ -1592,7 +1655,7 @@ export const generateByArtistFlow = async (artistName: string, styles: string[] 
         + `\n\nCONTEXTO: Inspire-se na escrita de ${artistName}.`
         + `\n\nIMPORTANTE - GÊNERO MUSICAL: ${styleContext} (Mantenha o vocabulário e o tema estritamente dentro deste gênero. Ex: Se for Gospel, mantenha religioso. Se for Rap, mantenha urbano).`;
 
-    return { generatedLyrics: await unifiedGenerate(prompt, AIProvider.GOOGLE) };
+    return { generatedLyrics: await unifiedGenerate(prompt, provider) };
 };
 
 
@@ -1649,10 +1712,10 @@ export const analyzeArtistDNA = async (artistName: string, provider: AIProvider 
     return result;
 };
 
-export const translateBlogPost = async (content: any, targetLang: 'en' | 'es' | 'pt'): Promise<any> => {
+export const translateBlogPost = async (content: any, targetLang: 'en' | 'es' | 'pt', provider?: AIProvider): Promise<any> => {
     const prompt = `Translate to ${targetLang === 'en' ? 'English' : targetLang === 'es' ? 'Spanish' : 'Portuguese'}. JSON structure: ${JSON.stringify(content)}`;
     try {
-        const textRaw = await unifiedGenerate(prompt, AIProvider.GOOGLE);
+        const textRaw = await unifiedGenerate(prompt, provider);
         const text = textRaw?.replace(/```json|```/g, '').trim();
         return JSON.parse(text);
     } catch (e) { throw new Error("Translation failed"); }

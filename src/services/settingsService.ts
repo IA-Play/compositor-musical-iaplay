@@ -35,7 +35,7 @@ const loadLocalSettings = (): SystemSettings => {
                 promptCompress: parsed.promptCompress || DEFAULT_SETTINGS.promptCompress,
                 promptForensic: parsed.promptForensic || DEFAULT_SETTINGS.promptForensic,
                 promptScore: parsed.promptScore || DEFAULT_SETTINGS.promptScore,
-                blogPosts: (parsed.blogPosts && parsed.blogPosts.length > 0 && parsed.blogPosts.some((p: any) => p.id === 'post-atualizacao-v3-4-1-correcao-ollama-diffusers'))
+                blogPosts: (parsed.blogPosts && parsed.blogPosts.length > 0 && parsed.blogPosts.some((p: any) => p.id === 'post-atualizacao-v3-5-0-gerador-yue2-multilingue-correcoes'))
                     ? parsed.blogPosts
                     : DEFAULT_SETTINGS.blogPosts,
                 showcaseItems: (parsed.showcaseItems && parsed.showcaseItems.length > 0)
