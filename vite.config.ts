@@ -21,6 +21,19 @@ export default defineConfig({
           'Referer': 'https://build.nvidia.com/'
         }
       },
+      '/api/ollama': {
+        target: 'http://127.0.0.1:11434',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/ollama/, ''),
+        configure: (proxy) => {
+          proxy.on('error', (err: any, _req, res: any) => {
+            if (err?.code === 'ECONNREFUSED' && res && !res.headersSent && typeof res.writeHead === 'function') {
+              res.writeHead(502, { 'Content-Type': 'application/json' });
+              res.end(JSON.stringify({ error: 'Ollama offline na porta 11434' }));
+            }
+          });
+        }
+      },
       '/api': {
         target: process.env.VITE_API_URL || 'http://localhost:8000',
         changeOrigin: true,

@@ -375,6 +375,32 @@ export const DEFAULT_SETTINGS: SystemSettings = {
   "tutorialVideoUrl": "https://www.youtube.com/watch?v=60ygy76sKNQ",
   "blogPosts": [
     {
+      "id": "post-atualizacao-v3-4-1-correcao-ollama-diffusers",
+      "slug": "atualizacao-v3-4-1-conectividade-ollama-e-motor-yue2",
+      "coverImage": "/screenshots/editor_full_workflow.png",
+      "createdAt": "2026-10-01T08:50:00.000Z",
+      "translations": {
+        "pt": {
+          "title": "Atualização v3.4.1: Conectividade Total com Ollama Local, Otimização YuE2 e Correções",
+          "excerpt": "Melhorias críticas de estabilidade: proxy inteligente para modelos locais do Ollama sem erros de CORS/IPv6, autocura da biblioteca diffusers no motor YuE2 e edição livre no painel de listas.",
+          "keywords": "IAPLAY Studio, Atualização, Ollama Local, Gemma 2, Llama 3.2, YuE2, Diffusers, Estabilidade",
+          "content": "<h2>Atualização de Estabilidade e Conectividade: IAPLAY Studio v3.4.1</h2><p>Esta atualização traz melhorias pontuais de infraestrutura e correções fundamentais para garantir que o seu fluxo de composição lírica e produção musical neural funcione sem qualquer atrito.</p><h3>Principais Melhorias desta Versão:</h3><ul><li><strong>Conectividade 100% Estável com Ollama Local:</strong> Implementado um proxy interno inteligente (<code>/api/ollama</code>) que elimina bloqueios de CORS e problemas de resolução de <code>localhost</code> (IPv6) no Windows. Agora, modelos como <strong>Gemma 2 (9B)</strong>, <strong>Llama 3.2</strong>, <strong>Mistral</strong> e <strong>DeepSeek</strong> conectam-se instantaneamente, além de contarem com auto-fallback inteligente caso um modelo específico não esteja instalado.</li><li><strong>Correção da Dependência Diffusers no Motor YuE2:</strong> Solucionado o erro de módulo não encontrado ao gerar áudios neurais no motor local. O arquivo de requisitos foi atualizado com a biblioteca <code>diffusers</code> e módulos MIDI, além de um sistema automático de verificação e instalação no script de inicialização do servidor.</li><li><strong>Edição Fluida no Painel Administrativo de Listas:</strong> As listas de Estilos Musicais, Instrumentos e Sentimentos agora aceitam quebras de linha e digitação livre normalmente com suporte total à tecla Enter, sem perda de texto ou travamentos de cursor.</li><li><strong>Mensagens de Diagnóstico Inteligentes:</strong> Caso ocorra falta de memória VRAM na sua placa de vídeo ou um modelo ainda não tenha sido baixado, o sistema agora apresenta instruções claras de como resolver diretamente na tela.</li></ul><p>Para usufruir de todas as melhorias, basta reiniciar a aplicação ou atualizar pelo Pinokio com um clique!</p>"
+        },
+        "en": {
+          "title": "Update v3.4.1: Full Ollama Local Connectivity, YuE2 Optimization and Fixes",
+          "excerpt": "Critical stability improvements: smart local proxy for Ollama models with zero CORS/IPv6 issues, diffusers dependency auto-heal for YuE2 engine, and fluid list editing.",
+          "keywords": "IAPLAY Studio, Update, Local Ollama, Gemma 2, Llama 3.2, YuE2, Diffusers, Stability",
+          "content": "<h2>Stability and Connectivity Update: IAPLAY Studio v3.4.1</h2><p>This update delivers key infrastructure improvements and essential bug fixes to ensure seamless lyric songwriting and standalone neural audio generation.</p><h3>Key Updates:</h3><ul><li><strong>Rock-Solid Local Ollama Connectivity:</strong> Added a dedicated internal proxy (<code>/api/ollama</code>) that bypasses CORS and Windows IPv6 localhost conflicts. Connect effortlessly to <strong>Gemma 2 (9B)</strong>, <strong>Llama 3.2</strong>, and more.</li><li><strong>YuE2 Engine Diffusers Dependency Fix:</strong> Integrated <code>diffusers</code> and MIDI packages directly into requirements and added self-healing startup checks.</li><li><strong>Fluid List Editing in Admin:</strong> Natural typing and newline creation with Enter for musical styles, instruments, and vibes.</li><li><strong>Clear Diagnostic Feedback:</strong> Explicit guidance when VRAM is insufficient or a model needs to be downloaded.</li></ul>"
+        },
+        "es": {
+          "title": "Actualización v3.4.1: Conectividad Total con Ollama Local, Optimización YuE2 y Correcciones",
+          "excerpt": "Mejoras críticas de estabilidad: proxy inteligente para modelos locales de Ollama sin errores de CORS/IPv6, autocorrección de diffusers en YuE2 y edición fluida de listas.",
+          "keywords": "IAPLAY Studio, Actualización, Ollama Local, Gemma 2, Llama 3.2, YuE2, Diffusers, Estabilidad",
+          "content": "<h2>Actualización de Estabilidad y Conectividad: IAPLAY Studio v3.4.1</h2><p>Esta actualización ofrece mejoras clave de infraestructura y correcciones esenciales para garantizar una experiencia fluida.</p><h3>Novedades Principales:</h3><ul><li><strong>Conectividad Estable con Ollama Local:</strong> Proxy dedicado (<code>/api/ollama</code>) que elimina bloqueos de CORS y problemas de IPv6 en Windows.</li><li><strong>Corrección de Dependencia Diffusers en YuE2:</strong> Integración completa de <code>diffusers</code> y verificación automática al iniciar el servidor.</li><li><strong>Edición Fluida de Listas:</strong> Soporte natural para saltos de línea con Enter en estilos musicales, instrumentos y sentimientos.</li></ul>"
+        }
+      }
+    },
+    {
       "id": "post-guia-definitivo-iaplay-studio-completo",
       "slug": "guia-definitivo-iaplay-studio-tudo-sobre-o-estudio-ia",
       "coverImage": "/screenshots/editor_full_workflow.png",

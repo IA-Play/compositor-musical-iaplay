@@ -1,4 +1,4 @@
-﻿export interface OllamaModelInfo {
+export interface OllamaModelInfo {
     name: string;
     size?: string;
     parameterSize?: string;
@@ -25,41 +25,68 @@ export const getOllamaEndpoint = (): string => {
             }
         }
     } catch (e) { }
-    return 'http://localhost:11434';
+    return 'http://127.0.0.1:11434';
+};
+
+export const getOllamaCandidateEndpoints = (preferred?: string): string[] => {
+    const candidates: string[] = [];
+    const base = (preferred || getOllamaEndpoint()).replace(/\/+$/, '');
+
+    // 1. Prioriza proxy local do Vite (evita 100% de bloqueios CORS e falhas IPv6 no Windows)
+    if (typeof window !== 'undefined' && (!preferred || preferred.includes('localhost') || preferred.includes('127.0.0.1'))) {
+        candidates.push('/api/ollama');
+    }
+
+    // 2. Adiciona o endpoint base preferencial e variações de IP
+    if (base && !base.startsWith('/')) {
+        candidates.push(base);
+        if (base.includes('localhost')) {
+            candidates.push(base.replace('localhost', '127.0.0.1'));
+        } else if (base.includes('127.0.0.1')) {
+            candidates.push(base.replace('127.0.0.1', 'localhost'));
+        }
+    } else {
+        candidates.push('http://127.0.0.1:11434');
+        candidates.push('http://localhost:11434');
+    }
+
+    return Array.from(new Set(candidates));
 };
 
 /**
  * Consulta a API local do Ollama e retorna todos os modelos instalados/baixados.
  */
 export const fetchInstalledOllamaModels = async (customEndpoint?: string): Promise<OllamaModelInfo[]> => {
-    const endpoint = (customEndpoint || getOllamaEndpoint()).replace(/\/+$/, '');
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 3000);
+    const candidates = getOllamaCandidateEndpoints(customEndpoint);
+    for (const endpoint of candidates) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-        const res = await fetch(`${endpoint}/api/tags`, {
-            method: 'GET',
-            headers: { 'Accept': 'application/json' },
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-
-        if (!res.ok) return [];
-
-        const data = await res.json();
-        if (data && Array.isArray(data.models)) {
-            return data.models.map((m: any) => {
-                const sizeMb = m.size ? `${(m.size / (1024 * 1024 * 1024)).toFixed(1)} GB` : '';
-                return {
-                    name: m.name || m.model,
-                    size: sizeMb,
-                    parameterSize: m.details?.parameter_size || '',
-                    family: m.details?.family || ''
-                };
+            const res = await fetch(`${endpoint}/api/tags`, {
+                method: 'GET',
+                headers: { 'Accept': 'application/json' },
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
+            if (!res.ok) continue;
+
+            const data = await res.json();
+            if (data && Array.isArray(data.models)) {
+                return data.models.map((m: any) => {
+                    const sizeMb = m.size ? `${(m.size / (1024 * 1024 * 1024)).toFixed(1)} GB` : '';
+                    return {
+                        name: m.name || m.model,
+                        size: sizeMb,
+                        parameterSize: m.details?.parameter_size || '',
+                        family: m.details?.family || ''
+                    };
+                });
+            }
+        } catch (e) {
+            // Tenta próximo endpoint candidato
         }
-    } catch (e) {
-        // Ollama offline ou indisponível
     }
     return [];
 };
@@ -68,17 +95,20 @@ export const fetchInstalledOllamaModels = async (customEndpoint?: string): Promi
  * Verifica se o Ollama está online e respondendo.
  */
 export const checkOllamaStatus = async (customEndpoint?: string): Promise<boolean> => {
-    const endpoint = (customEndpoint || getOllamaEndpoint()).replace(/\/+$/, '');
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2500);
-        const res = await fetch(`${endpoint}/api/tags`, {
-            method: 'GET',
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        return res.ok;
-    } catch (e) {
-        return false;
+    const candidates = getOllamaCandidateEndpoints(customEndpoint);
+    for (const endpoint of candidates) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const res = await fetch(`${endpoint}/api/tags`, {
+                method: 'GET',
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            if (res.ok) return true;
+        } catch (e) {
+            // Tenta próximo endpoint candidato
+        }
     }
+    return false;
 };

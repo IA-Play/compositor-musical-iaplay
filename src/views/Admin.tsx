@@ -26,7 +26,13 @@ export const Admin: React.FC = () => {
     const { user } = useAuth();
     const { showAlert, showConfirm } = useModal();
     const navigate = useNavigate();
-    const [settings, setSettings] = useState<SystemSettings>(getSystemSettings());
+    const initialSettings = getSystemSettings();
+    const [settings, setSettings] = useState<SystemSettings>(initialSettings);
+    const [rawLists, setRawLists] = useState({
+        listInstruments: initialSettings.listInstruments?.join('\n') || '',
+        listStyles: initialSettings.listStyles?.join('\n') || '',
+        listSentiments: initialSettings.listSentiments?.join('\n') || ''
+    });
     const [activeTab, setActiveTab] = useState<'prompts' | 'lists'>('prompts');
     const [savingSettings, setSavingSettings] = useState(false);
 
@@ -34,6 +40,11 @@ export const Admin: React.FC = () => {
         const refreshSettings = async () => {
             const fresh = await initSettings();
             setSettings(fresh);
+            setRawLists({
+                listInstruments: fresh.listInstruments?.join('\n') || '',
+                listStyles: fresh.listStyles?.join('\n') || '',
+                listSentiments: fresh.listSentiments?.join('\n') || ''
+            });
         };
         refreshSettings();
     }, [user, navigate]);
@@ -41,7 +52,15 @@ export const Admin: React.FC = () => {
     const handleSave = async () => {
         setSavingSettings(true);
         try {
-            await saveSystemSettings(settings);
+            const parseList = (text: string) => text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            const toSave: SystemSettings = {
+                ...settings,
+                listInstruments: parseList(rawLists.listInstruments),
+                listStyles: parseList(rawLists.listStyles),
+                listSentiments: parseList(rawLists.listSentiments)
+            };
+            await saveSystemSettings(toSave);
+            setSettings(toSave);
             await showAlert("Configurações e Prompts Mestres salvos com sucesso!");
         } catch (error: any) {
             await showAlert(error.message || "Erro ao salvar.");
@@ -54,14 +73,17 @@ export const Admin: React.FC = () => {
         if (await showConfirm("Restaurar todos os Prompts Mestres e Listas para os valores padrão originais?")) {
             const def = resetSystemSettings();
             setSettings(def);
+            setRawLists({
+                listInstruments: def.listInstruments?.join('\n') || '',
+                listStyles: def.listStyles?.join('\n') || '',
+                listSentiments: def.listSentiments?.join('\n') || ''
+            });
             await showAlert("Padrões restaurados!");
         }
     };
 
-    const handleListChange = (key: keyof SystemSettings, value: string) => {
-        const list = value.split('\n').filter(line => line.trim() !== '');
-        // @ts-ignore
-        setSettings({ ...settings, [key]: list });
+    const handleListTextChange = (key: 'listInstruments' | 'listStyles' | 'listSentiments', value: string) => {
+        setRawLists(prev => ({ ...prev, [key]: value }));
     };
 
     return (
@@ -149,8 +171,8 @@ export const Admin: React.FC = () => {
                                     <p className="text-[11px] text-zinc-400">Um instrumento por linha para o Arsenal.</p>
                                 </div>
                                 <textarea
-                                    value={settings.listInstruments?.join('\n') || ''}
-                                    onChange={e => handleListChange('listInstruments', e.target.value)}
+                                    value={rawLists.listInstruments}
+                                    onChange={e => handleListTextChange('listInstruments', e.target.value)}
                                     className="w-full h-96 bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar"
                                 />
                             </div>
@@ -161,8 +183,8 @@ export const Admin: React.FC = () => {
                                     <p className="text-[11px] text-zinc-400">Um estilo/gênero por linha.</p>
                                 </div>
                                 <textarea
-                                    value={settings.listStyles?.join('\n') || ''}
-                                    onChange={e => handleListChange('listStyles', e.target.value)}
+                                    value={rawLists.listStyles}
+                                    onChange={e => handleListTextChange('listStyles', e.target.value)}
                                     className="w-full h-96 bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar"
                                 />
                             </div>
@@ -173,8 +195,8 @@ export const Admin: React.FC = () => {
                                     <p className="text-[11px] text-zinc-400">Um sentimento/humor por linha.</p>
                                 </div>
                                 <textarea
-                                    value={settings.listSentiments?.join('\n') || ''}
-                                    onChange={e => handleListChange('listSentiments', e.target.value)}
+                                    value={rawLists.listSentiments}
+                                    onChange={e => handleListTextChange('listSentiments', e.target.value)}
                                     className="w-full h-96 bg-black/70 border border-white/10 focus:border-primary outline-none rounded-xl p-3 text-xs font-mono text-zinc-200 custom-scrollbar"
                                 />
                             </div>

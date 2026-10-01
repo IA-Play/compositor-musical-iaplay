@@ -1,6 +1,7 @@
 
 import { Project, AIProvider, ArsenalSettings, DetailedInstruction, Language, MusicType, Sentiment, MusicPlatform } from "../types";
 import { getSystemSettings } from "./settingsService";
+import { getOllamaCandidateEndpoints } from "./ollamaService";
 
 // --- API CLIENTS WITH INTERNAL ROTATION (VIA SECURE BACKEND) ---
 
@@ -609,80 +610,124 @@ export const callOllama = async (prompt: string, systemInstruction?: string, mod
     const userKeys = getStoredUserKeys();
     const settings = getSystemSettings();
 
-    const endpoint = (url || userKeys.ollamaUrl || settings.ollamaUrl || 'http://localhost:11434').replace(/\/+$/, '');
+    const endpointsToTry = getOllamaCandidateEndpoints(url || userKeys.ollamaUrl || settings.ollamaUrl);
+
     let modelToUse = (model || userKeys.ollamaModel || settings.ollamaModel || 'llama3.2').trim();
 
-    // Consulta os modelos atualmente baixados no Ollama para evitar 400 Bad Request
-    try {
-        const tagsRes = await fetch(`${endpoint}/api/tags`).catch(() => null);
-        if (tagsRes && tagsRes.ok) {
-            const tagsData = await tagsRes.json().catch(() => ({}));
-            if (tagsData.models && Array.isArray(tagsData.models) && tagsData.models.length > 0) {
-                const availableNames: string[] = tagsData.models.map((m: any) => m.name || m.model).filter(Boolean);
-                const exactMatch = availableNames.find((n: string) => n === modelToUse || n.startsWith(`${modelToUse}:`) || modelToUse.startsWith(`${n}:`));
-                if (exactMatch) {
-                    modelToUse = exactMatch;
-                } else if (!availableNames.includes(modelToUse) && availableNames.length > 0) {
-                    // Seleciona automaticamente o primeiro modelo válido instalado
-                    modelToUse = availableNames[0];
+    // 1. Tentar descobrir endpoint funcional e consultar modelos instalados
+    let activeEndpoint = endpointsToTry[0];
+    let installedModels: string[] = [];
+
+    for (const ep of endpointsToTry) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+            const tagsRes = await fetch(`${ep}/api/tags`, { signal: controller.signal }).catch(() => null);
+            clearTimeout(timeoutId);
+
+            if (tagsRes && tagsRes.ok) {
+                const tagsData = await tagsRes.json().catch(() => ({}));
+                if (tagsData.models && Array.isArray(tagsData.models)) {
+                    installedModels = tagsData.models.map((m: any) => m.name || m.model).filter(Boolean);
+                    activeEndpoint = ep;
+                    break;
                 }
             }
+        } catch (e) {}
+    }
+
+    // Se temos modelos instalados, verificar se o modelo pedido existe ou fazer fallback inteligente
+    if (installedModels.length > 0) {
+        const exactMatch = installedModels.find(n => n === modelToUse || n.startsWith(`${modelToUse}:`));
+        if (exactMatch) {
+            modelToUse = exactMatch;
+        } else if (!installedModels.includes(modelToUse)) {
+            console.warn(`[Ollama] Modelo '${modelToUse}' não encontrado entre os instalados: [${installedModels.join(', ')}]. Usando '${installedModels[0]}'.`);
+            modelToUse = installedModels[0];
         }
-    } catch (e) {}
+    }
 
-    // 1. Try native Ollama endpoint /api/generate
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000);
+    let lastErrorDetail = "";
 
-        const res = await fetch(`${endpoint}/api/generate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: modelToUse,
-                prompt: prompt,
-                system: systemInstruction,
-                stream: false
-            }),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+    // 2. Tentar endpoint nativo /api/generate
+    for (const ep of [activeEndpoint, ...endpointsToTry.filter(e => e !== activeEndpoint)]) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-        if (res.ok) {
-            const data = await res.json();
-            if (data.response) return data.response.trim();
+            const res = await fetch(`${ep}/api/generate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: modelToUse,
+                    prompt: prompt,
+                    system: systemInstruction,
+                    stream: false
+                }),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.response) return data.response.trim();
+            } else {
+                const errData = await res.json().catch(() => null);
+                lastErrorDetail = errData?.error || `HTTP ${res.status} ${res.statusText}`;
+            }
+        } catch (err: any) {
+            lastErrorDetail = err.message || String(err);
         }
-    } catch (e) {}
+    }
 
-    // 2. Fallback to OpenAI-compatible /v1/chat/completions
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 120000);
+    // 3. Fallback para /v1/chat/completions (OpenAI-compatible)
+    for (const ep of [activeEndpoint, ...endpointsToTry.filter(e => e !== activeEndpoint)]) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 120000);
 
-        const messages: any[] = [];
-        if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
-        messages.push({ role: 'user', content: prompt });
+            const messages: any[] = [];
+            if (systemInstruction) messages.push({ role: 'system', content: systemInstruction });
+            messages.push({ role: 'user', content: prompt });
 
-        const res = await fetch(`${endpoint}/v1/chat/completions`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: modelToUse,
-                messages,
-                temperature: 0.7
-            }),
-            signal: controller.signal
-        });
-        clearTimeout(timeoutId);
+            const res = await fetch(`${ep}/v1/chat/completions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    model: modelToUse,
+                    messages,
+                    temperature: 0.7
+                }),
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
 
-        if (res.ok) {
-            const data = await res.json();
-            const text = data?.choices?.[0]?.message?.content;
-            if (text) return text.trim();
+            if (res.ok) {
+                const data = await res.json();
+                const text = data?.choices?.[0]?.message?.content;
+                if (text) return text.trim();
+            } else {
+                const errData = await res.json().catch(() => null);
+                lastErrorDetail = errData?.error || `HTTP ${res.status} ${res.statusText}`;
+            }
+        } catch (err: any) {
+            lastErrorDetail = err.message || String(err);
         }
-    } catch (e) {}
+    }
 
-    throw new Error(`Falha ao conectar no Ollama (${endpoint}). Certifique-se de que o Ollama está aberto no seu PC/Pinokio e há pelo menos um modelo disponível (modelo tentado: '${modelToUse}').`);
+    // Tratar mensagens de erro específicas para orientar o usuário com precisão
+    const lowerErr = (lastErrorDetail || "").toLowerCase();
+    if (lowerErr.includes("not found") || lowerErr.includes("pulling")) {
+        throw new Error(`Ollama: O modelo '${modelToUse}' não está baixado no seu computador. Execute 'ollama run ${modelToUse}' no terminal ou escolha um modelo disponível nas Configurações.`);
+    }
+    if (lowerErr.includes("memory") || lowerErr.includes("vram") || lowerErr.includes("cuda") || lowerErr.includes("allocate") || lowerErr.includes("exit status 1") || lowerErr.includes("terminated")) {
+        throw new Error(`Ollama: Memória insuficiente (VRAM/RAM) para rodar o modelo '${modelToUse}'. Esse modelo é muito pesado para o hardware. Selecione um modelo mais leve como 'llama3.2' (3B) ou 'deepseek-r1:1.5b' nas Configurações.`);
+    }
+    if (lastErrorDetail && !lowerErr.includes("abort") && !lowerErr.includes("failed to fetch")) {
+        throw new Error(`Ollama (${modelToUse}): ${lastErrorDetail}`);
+    }
+
+    throw new Error(`Falha ao conectar no Ollama (${activeEndpoint}). Certifique-se de que o aplicativo do Ollama está aberto no seu PC/Pinokio e há pelo menos um modelo disponível (modelo tentado: '${modelToUse}').`);
 };
 
 

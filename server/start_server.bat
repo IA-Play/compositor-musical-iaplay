@@ -26,5 +26,12 @@ if %ERRORLEVEL% equ 0 (
 )
 
 echo [IAPLAY Engine] Utilizando Python: %PYTHON_EXE%
+
+"%PYTHON_EXE%" -c "import diffusers" >nul 2>&1
+if %ERRORLEVEL% neq 0 (
+    echo [IAPLAY Engine] Instalando pacote essencial diffusers...
+    "%PYTHON_EXE%" -m pip install "diffusers>=0.30.0"
+)
+
 echo [IAPLAY Engine] Iniciando servidor dedicado YuE2 na porta 42024...
 "%PYTHON_EXE%" "%~dp0yue_server.py" --port 42024 --host 127.0.0.1

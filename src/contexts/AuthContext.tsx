@@ -20,7 +20,7 @@ export const DEFAULT_LOCAL_USER: User = {
     nvidiaApiKey: '',
     mistralApiKey: '',
     togetherApiKey: '',
-    ollamaUrl: 'http://localhost:11434',
+    ollamaUrl: 'http://127.0.0.1:11434',
     ollamaModel: 'llama3.2',
     maestroUrl: 'http://127.0.0.1:42003',
     creativeContext: ''
@@ -69,7 +69,7 @@ const rawDataToUser = (data: any): User => ({
     nvidiaApiKey: data.nvidiaApiKey || data.nvidia_api_key || '',
     mistralApiKey: data.mistralApiKey || data.mistral_api_key || '',
     togetherApiKey: data.togetherApiKey || data.together_api_key || '',
-    ollamaUrl: data.ollamaUrl || data.ollama_url || 'http://localhost:11434',
+    ollamaUrl: data.ollamaUrl || data.ollama_url || 'http://127.0.0.1:11434',
     ollamaModel: data.ollamaModel || data.ollama_model || 'llama3.2',
     maestroUrl: data.maestroUrl || data.maestro_url || 'http://127.0.0.1:42003',
     creativeContext: data.creativeContext || data.creative_context || '',
