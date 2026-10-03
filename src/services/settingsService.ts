@@ -8,6 +8,15 @@ let cachedSettings: SystemSettings = { ...DEFAULT_SETTINGS };
 let isLoaded = false;
 export let isSettingsLoadedFromServer = false;
 
+const mergeList = (savedList: string[] | undefined, defaultList: string[]): string[] => {
+    if (!savedList || !Array.isArray(savedList) || savedList.length === 0) return defaultList;
+    const set = new Set(savedList);
+    for (const item of defaultList) {
+        set.add(item);
+    }
+    return Array.from(set);
+};
+
 const loadLocalSettings = (): SystemSettings => {
     try {
         const stored = localStorage.getItem(LOCAL_SETTINGS_KEY);
@@ -16,9 +25,9 @@ const loadLocalSettings = (): SystemSettings => {
             return {
                 ...DEFAULT_SETTINGS,
                 ...parsed,
-                listInstruments: parsed.listInstruments || DEFAULT_SETTINGS.listInstruments,
-                listSentiments: parsed.listSentiments || DEFAULT_SETTINGS.listSentiments,
-                listStyles: parsed.listStyles || DEFAULT_SETTINGS.listStyles,
+                listInstruments: mergeList(parsed.listInstruments, DEFAULT_SETTINGS.listInstruments),
+                listSentiments: mergeList(parsed.listSentiments, DEFAULT_SETTINGS.listSentiments),
+                listStyles: mergeList(parsed.listStyles, DEFAULT_SETTINGS.listStyles),
                 promptLyrics: (parsed.promptLyrics && parsed.promptLyrics.includes("CHAOS THEORY")) 
                     ? parsed.promptLyrics 
                     : DEFAULT_SETTINGS.promptLyrics,
