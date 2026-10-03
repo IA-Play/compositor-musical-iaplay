@@ -989,6 +989,35 @@ const ensureArray = (value: any): string[] => {
     return [];
 };
 
+// --- TRADUÇÃO DOS TIPOS DE VOZ DO ARSENAL PARA INGLÊS ---
+export const translateVoiceTypesToEnglish = (voiceTypes: any): string[] => {
+    const arr = ensureArray(voiceTypes);
+    const map: Record<string, string> = {
+        "Voz Feminina": "Female Lead Vocals",
+        "Voz Masculina": "Male Lead Vocals",
+        "Dupla Sertaneja Masculina": "Male Country Duo Vocals, Dual Harmonies",
+        "Dupla Sertaneja Feminina": "Female Country Duo Vocals, Dual Harmonies",
+        "Dueto Misto (Masc + Fem)": "Male and Female Duet, Dual Lead Vocals",
+        "Coral / Backing Vocals": "Choir Backing Vocals, Layered Harmonies",
+        "Vocal Infantil": "Child Vocals",
+        "Gang Vocals (Coro de Estádio)": "Gang Vocals, Stadium Crowd Chorus",
+        "Voz Rasgada e Rouca": "Raspy Gritty Vocals",
+        "Voz Aveludada": "Velvety Smooth Vocals",
+        "Voz Potente / Belting": "Powerful Belting Vocals",
+        "Voz Suave e Intimista": "Soft Intimate Vocals",
+        "Voz Sussurrada": "Whispered Breathless Vocals",
+        "Voz Aguda e Cristalina": "Bright Crystalline High Vocals",
+        "Voz Grave e Encorpada": "Deep Resonant Low Vocals",
+        "Voz com Drive / Distorção": "Vocal Drive, Controlled Distortion",
+        "Falsete Emotivo": "Emotional Falsetto, Head Voice",
+        "Vocal Melismático / R&B Gospel": "Melismatic Vocal Runs, Gospel Riffs",
+        "Flow Rápido / Rítmico": "Fast Rhythmic Flow, Precise Cadence",
+        "Vocal Melancólico e Emocional": "Melancholic Emotional Vocals"
+    };
+
+    return arr.map(v => (typeof v === 'string' && map[v.trim()]) ? map[v.trim()] : String(v).trim()).filter(Boolean);
+};
+
 // --- HELPER TO FORMAT ARSENAL ---
 const formatArsenalForPrompt = (arsenal: ArsenalSettings): string => {
     const instruments = ensureArray(arsenal.instruments);
@@ -996,10 +1025,14 @@ const formatArsenalForPrompt = (arsenal: ArsenalSettings): string => {
     const mastering = ensureArray(arsenal.mastering);
     const effects = ensureArray(arsenal.effects);
     const rhythm = ensureArray(arsenal.rhythm);
-    const voiceTypes = ensureArray(arsenal.voiceTypes);
+    const rawVoiceTypes = ensureArray(arsenal.voiceTypes);
+    const englishVoiceTypes = translateVoiceTypesToEnglish(rawVoiceTypes);
+    const voiceSummary = englishVoiceTypes.length > 0
+        ? englishVoiceTypes.join(", ")
+        : "Free Choice / Natural";
 
     return `
-    - Vocal Profile / Voice Type (High Priority): ${voiceTypes.join(", ") || "Free Choice / Natural"}
+    - Vocal Profile / Voice Type & Gender (NON-NEGOTIABLE HIGH PRIORITY): ${voiceSummary}
     - Instruments (High Priority): ${instruments.join(", ") || "Free Choice"}
     - Atmosphere: ${atmosphere.join(", ") || "Standard"}
     - Reverb: ${arsenal.isReverbActive ? `Active (${arsenal.reverbLevel !== undefined ? arsenal.reverbLevel : 50}%)` : "Dry"}
@@ -1180,6 +1213,13 @@ export const structureSunoPrompt = async (
             ? arsenalInstruments.join(", ")
             : (genreHint || "Free Choice / Natural Arrangement");
 
+        const rawVoiceTypes = ensureArray(project.arsenal?.voiceTypes);
+        const englishVoiceTypes = translateVoiceTypesToEnglish(rawVoiceTypes);
+        const vocalInstruction = englishVoiceTypes.length > 0 ? englishVoiceTypes.join(", ") : "";
+
+        const hasFemaleVocal = rawVoiceTypes.some(v => /feminin/i.test(v)) || englishVoiceTypes.some(v => /female/i.test(v));
+        const hasMaleVocal = rawVoiceTypes.some(v => /masculin/i.test(v)) || englishVoiceTypes.some(v => /\bmale\b/i.test(v));
+
         const enrichedArsenal = {
             ...project.arsenal,
             instruments: arsenalInstruments.length > 0 ? arsenalInstruments : (genreHint ? [genreHint] : [])
@@ -1255,13 +1295,17 @@ ${detailedInstructions || "No additional specific instructions."}
             prompt += `\n\n[LYRICS]\n${cleanInputLyrics}`;
         }
 
+        const vocalDirective = vocalInstruction
+            ? `- Target Vocal Profile: ${vocalInstruction}. You MUST include "${vocalInstruction}" in [PROMPT_GLOBAL] and describe the vocal delivery in the [Production Note: ...] blocks.`
+            : "";
+
         const dynamicStyleOverrideInstruction = `
-CRITICAL - NEW MUSICAL STYLE & RESTRUCTURING ENFORCEMENT:
+CRITICAL - NEW MUSICAL STYLE, VOCAL PROFILE & RESTRUCTURING ENFORCEMENT:
 - Target Musical Style: ${activeStyles.join(", ")}
-- Target Atmosphere / Emotion: ${project.sentiment}
+${vocalDirective ? vocalDirective + '\n' : ''}- Target Atmosphere / Emotion: ${project.sentiment}
 - Target Instrumentation: ${combinedInstruments}
-- MANDATORY PRODUCTION NOTES: You MUST generate 100% fresh, authentic [Production Note: ...] for each section strictly adhering to "${activeStyles.join(", ")}". NEVER reuse or preserve old instruments or arrangements from another genre (e.g. if the style is Pagode, NEVER mention soft piano, acoustic folk guitar or orchestral strings; use Cavaquinho, Tantã, Pandeiro, Surdo, Repique).
-- MANDATORY [PROMPT_GLOBAL]: Must end with the active style keywords: "${activeStyles.join(", ")}${project.sentiment && project.sentiment !== 'Neutro' ? ', ' + project.sentiment : ''}". NEVER leave [PROMPT_GLOBAL] empty or ending with a trailing comma.
+- MANDATORY PRODUCTION NOTES: You MUST generate 100% fresh, authentic [Production Note: ...] for each section strictly adhering to "${activeStyles.join(", ")}"${vocalInstruction ? ' and vocal profile "' + vocalInstruction + '"' : ''}. NEVER reuse or preserve old instruments or arrangements from another genre.
+- MANDATORY [PROMPT_GLOBAL]: Must end with the vocal profile and active style keywords: "${vocalInstruction ? vocalInstruction + ', ' : ''}${activeStyles.join(", ")}${project.sentiment && project.sentiment !== 'Neutro' ? ', ' + project.sentiment : ''}". NEVER leave [PROMPT_GLOBAL] empty or ending with a trailing comma.
 - 100% LYRICS PRESERVATION: Every line of the song lyrics must be reproduced word for word with zero omissions.
 `.trim();
 
@@ -1296,7 +1340,8 @@ CRITICAL INSTRUCTION - ZERO TRUNCATION & 100% LYRIC PRESERVATION:
         const cleanStyleString = activeStyles.join(", ");
         const sentimentString = project.sentiment && project.sentiment !== "Neutro" ? project.sentiment : "";
         const primaryHint = genreHint || (arsenalInstruments.slice(0, 4).join(", "));
-        const styleKeywords = [cleanStyleString, sentimentString, primaryHint].filter(Boolean).join(", ");
+        const vocalKeywords = englishVoiceTypes.length > 0 ? englishVoiceTypes.join(", ") : "";
+        const styleKeywords = [vocalKeywords, cleanStyleString, sentimentString, primaryHint].filter(Boolean).join(", ");
 
         const globalMatch = restored.match(/\[PROMPT_GLOBAL:\s*([^\]]*)\]/i);
         if (globalMatch) {
@@ -1309,8 +1354,21 @@ CRITICAL INSTRUCTION - ZERO TRUNCATION & 100% LYRIC PRESERVATION:
                 if (!hasAnyStyle) {
                     globalContent = `${globalContent}, ${styleKeywords}`;
                 }
-                restored = restored.replace(globalMatch[0], `[PROMPT_GLOBAL: ${globalContent}]`);
             }
+
+            // Injeta o perfil vocal no [PROMPT_GLOBAL] caso o modelo tenha omitido
+            if (vocalKeywords) {
+                const vocalLower = vocalKeywords.toLowerCase();
+                const alreadyHasVocal = globalContent.toLowerCase().includes(vocalLower) ||
+                    (hasFemaleVocal && /female/i.test(globalContent)) ||
+                    (hasMaleVocal && /\bmale\b/i.test(globalContent));
+
+                if (!alreadyHasVocal) {
+                    globalContent = `${globalContent}, ${vocalKeywords}`;
+                }
+            }
+
+            restored = restored.replace(globalMatch[0], `[PROMPT_GLOBAL: ${globalContent}]`);
         } else {
             // Injeta [PROMPT_GLOBAL] caso o modelo tenha omitido
             const langMatch = restored.match(/^\s*(\[[A-Z\s]+\])\s*\n/i);
@@ -1320,6 +1378,27 @@ CRITICAL INSTRUCTION - ZERO TRUNCATION & 100% LYRIC PRESERVATION:
             } else {
                 restored = `${defaultGlobal}\n\n${restored}`;
             }
+        }
+
+        // Assegura que as Production Notes reflitam o gênero do vocal se especificado
+        if (hasFemaleVocal) {
+            restored = restored.replace(
+                /(\[Production Note:[^\]]*?)(?:(the\s+)?\b(vocals|lead vocals?|vocalist|vocal performance|vocal delivery)\b)([^\]]*?\])/gi,
+                (match, prefix, theWord, vocalWord, suffix) => {
+                    if (/female|feminina/i.test(match)) return match;
+                    const leadArticle = theWord ? theWord : '';
+                    return `${prefix}${leadArticle}female ${vocalWord}${suffix}`;
+                }
+            );
+        } else if (hasMaleVocal && !hasFemaleVocal) {
+            restored = restored.replace(
+                /(\[Production Note:[^\]]*?)(?:(the\s+)?\b(vocals|lead vocals?|vocalist|vocal performance|vocal delivery)\b)([^\]]*?\])/gi,
+                (match, prefix, theWord, vocalWord, suffix) => {
+                    if (/\bmale\b|masculina/i.test(match)) return match;
+                    const leadArticle = theWord ? theWord : '';
+                    return `${prefix}${leadArticle}male ${vocalWord}${suffix}`;
+                }
+            );
         }
 
         // Formata o resultado para a plataforma selecionada sem perda de dados
