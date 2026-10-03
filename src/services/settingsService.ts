@@ -19,22 +19,33 @@ const loadLocalSettings = (): SystemSettings => {
                 listInstruments: parsed.listInstruments || DEFAULT_SETTINGS.listInstruments,
                 listSentiments: parsed.listSentiments || DEFAULT_SETTINGS.listSentiments,
                 listStyles: parsed.listStyles || DEFAULT_SETTINGS.listStyles,
-                promptLyrics: (parsed.promptLyrics && parsed.promptLyrics.includes("CHAOS THEORY")) 
+                                promptLyrics: (parsed.promptLyrics && parsed.promptLyrics.includes("ELITE HUMAN SONGWRITER")) 
                     ? parsed.promptLyrics 
                     : DEFAULT_SETTINGS.promptLyrics,
                 promptInstrumental: parsed.promptInstrumental || DEFAULT_SETTINGS.promptInstrumental,
-                promptStructure: (parsed.promptStructure && parsed.promptStructure.includes("DYNAMIC STYLE ADAPTATION")) 
+                promptOptimize: (parsed.promptOptimize && parsed.promptOptimize.includes("ELITE RHYTHM DOCTOR"))
+                    ? parsed.promptOptimize
+                    : DEFAULT_SETTINGS.promptOptimize,
+                promptStructure: (parsed.promptStructure && parsed.promptStructure.includes("IMMUTABLE-LYRICS FORMATTER")) 
                     ? parsed.promptStructure 
                     : DEFAULT_SETTINGS.promptStructure,
                 promptRemix: parsed.promptRemix || DEFAULT_SETTINGS.promptRemix,
                 promptLength: parsed.promptLength || DEFAULT_SETTINGS.promptLength,
-                promptStyles: (parsed.promptStyles && parsed.promptStyles.includes("STYLE DESCRIPTION ARCHITECT")) 
+                promptStyles: (parsed.promptStyles && parsed.promptStyles.includes("MASTER SONIC STYLE ARCHITECT")) 
                     ? parsed.promptStyles 
                     : DEFAULT_SETTINGS.promptStyles,
-                promptAnalyze: parsed.promptAnalyze || DEFAULT_SETTINGS.promptAnalyze,
-                promptCompress: parsed.promptCompress || DEFAULT_SETTINGS.promptCompress,
-                promptForensic: parsed.promptForensic || DEFAULT_SETTINGS.promptForensic,
-                promptScore: parsed.promptScore || DEFAULT_SETTINGS.promptScore,
+                promptAnalyze: (parsed.promptAnalyze && parsed.promptAnalyze.includes("MASTER A&R"))
+                    ? parsed.promptAnalyze
+                    : DEFAULT_SETTINGS.promptAnalyze,
+                promptCompress: (parsed.promptCompress && parsed.promptCompress.includes("MASTER LOSSLESS AUDIO PROMPT COMPRESSOR"))
+                    ? parsed.promptCompress
+                    : DEFAULT_SETTINGS.promptCompress,
+                promptForensic: (parsed.promptForensic && parsed.promptForensic.includes("MASTER SONIC DNA FORENSIC ARCHITECT"))
+                    ? parsed.promptForensic
+                    : DEFAULT_SETTINGS.promptForensic,
+                promptScore: (parsed.promptScore && parsed.promptScore.includes("MASTER MUSIC THEORY ANALYST"))
+                    ? parsed.promptScore
+                    : DEFAULT_SETTINGS.promptScore,
                 blogPosts: (parsed.blogPosts && parsed.blogPosts.length > 0 && parsed.blogPosts.some((p: any) => p.id === 'post-atualizacao-v3-5-0-gerador-yue2-multilingue-correcoes'))
                     ? parsed.blogPosts
                     : DEFAULT_SETTINGS.blogPosts,
