@@ -366,7 +366,7 @@ try {
             throw new Exception("Chave API OpenRouter não configurada. Vá em Configurações > Chaves de API e adicione sua chave OpenRouter.");
         }
         $openrouterModels = [
-            'google/gemini-2.0-flash-lite:free',
+            'google/gemini-2.5-flash-lite:free',
             'google/gemini-2.0-flash-exp:free',
             'meta-llama/llama-3.3-70b-instruct:free',
             'deepseek/deepseek-r1:free',
@@ -569,7 +569,7 @@ try {
             $body["tools"] = [["googleSearch" => new stdClass()]];
         }
 
-        $streamModels = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+        $streamModels = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
 
         if ($isStream) {
             $streamSuccess = false;
@@ -622,7 +622,7 @@ try {
             exit();
         }
 
-        $modelsToTry = ['gemini-3.6-flash', 'gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-2.0-flash', 'gemini-2.0-flash-lite'];
+        $modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro'];
         $firstErrorCode = 0;
         $firstErrorResponse = '';
         $lastErrorCode = 0;
