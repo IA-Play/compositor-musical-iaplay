@@ -29,8 +29,22 @@ import urllib.error
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-import torch
-import soundfile as sf
+try:
+    import torch
+except ImportError:
+    torch = None  # type: ignore
+
+try:
+    import soundfile as sf
+except ImportError:
+    sf = None  # type: ignore
+
+try:
+    from server.gpu_compat import get_gpu_info, apply_torch_cuda_compat_shims, ensure_pytorch_installed
+except ImportError:
+    from gpu_compat import get_gpu_info, apply_torch_cuda_compat_shims, ensure_pytorch_installed
+
+apply_torch_cuda_compat_shims()
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -93,7 +107,7 @@ def ensure_essential_dependencies():
             except Exception as e:
                 print(f"[IAPLAY Engine] Falha ao auto-instalar {pkg_name}: {e}")
 
-ensure_essential_dependencies()
+# ensure_essential_dependencies() é chamado sob demanda ao carregar o pipeline YuE2 para inicialização instantânea
 
 # Gestão inteligente do serviço local Ollama
 _ollama_process = None
@@ -299,6 +313,12 @@ def _model_download_worker():
             _download_state["downloaded_files"] = 0
             _download_state["cancel_requested"] = False
 
+        # Caso o usuário tenha instalado no Modo Leve (sem PyTorch), instala automaticamente o PyTorch para a GPU dele
+        def _update_dl_msg(msg: str):
+            with _download_lock:
+                _download_state["current_file"] = msg
+        ensure_pytorch_installed(progress_callback=_update_dl_msg)
+
         total_files = len(REQUIRED_MODEL_FILES)
         total_bytes = sum(s for _, s in REQUIRED_MODEL_FILES)
         bytes_done = 0
@@ -410,6 +430,9 @@ def get_pipeline(job_id: Optional[str] = None):
                 except Exception as e:
                     print(f"[IAPLAY Engine] Aviso ao configurar files_locator: {e}")
 
+                ensure_essential_dependencies()
+                ensure_pytorch_installed()
+                apply_torch_cuda_compat_shims()
                 import wgp
                 _pipeline, _offloadobj = wgp.load_models("yue2", output_type="audio")
                 print("[IAPLAY Engine] YuE2 carregado com sucesso e pronto para gerar músicas!")
@@ -545,7 +568,8 @@ def _run_generation_job(job_id: str, body: dict):
         filename = f"{timestamp}_seed{seed}_{clean_title}.wav"
         output_path = os.path.join(OUTPUTS_DIR, filename)
 
-        sf.write(output_path, audio_np, sample_rate)
+        import soundfile as _sf
+        _sf.write(output_path, audio_np, sample_rate)
         print(f"[IAPLAY Engine] Música salva com sucesso em: {output_path}")
 
         auto_humanize = body.get("humanize", True)
@@ -594,16 +618,18 @@ def _run_generation_job(job_id: str, body: dict):
 @app.get("/")
 def health_check():
     models_info = check_models_status()
-    device_type = "cuda" if torch.cuda.is_available() else ("mps" if hasattr(torch.backends, "mps") and torch.backends.mps.is_available() else "cpu")
-    gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else ("Apple Silicon" if device_type == "mps" else "Processador (CPU)")
+    gpu_info = get_gpu_info()
     return {
         "status": "online",
         "app": "IAPLAY Studio Engine",
         "model": "YuE2 3B Neural",
         "models_installed": models_info["installed"],
         "models_progress": models_info["progress"],
-        "device": device_type,
-        "gpu": gpu_name,
+        "device": gpu_info.get("device_type", "cpu"),
+        "gpu": gpu_info.get("gpu_name", "Processador (CPU)"),
+        "gpu_vendor": gpu_info.get("vendor", "cpu"),
+        "backend": gpu_info.get("backend", "CPU"),
+        "torch_installed": gpu_info.get("torch_installed", False),
         "is_loading_pipeline": _is_loading_pipeline,
         "pipeline_loading_phase": _pipeline_loading_phase,
         "ollama_online": is_ollama_online(),

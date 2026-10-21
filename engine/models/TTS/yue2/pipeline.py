@@ -90,7 +90,7 @@ class YuE2Pipeline:
         if sampling.max_tokens > available:
             raise ValueError(f"YuE2 {phase} prompt and generation budget exceed its {CONTEXT}-token context. Shorten the lyrics, score or duration.")
         # Trigger MMGP before the engine allocates persistent GPU state.
-        self.text_encoder.model.embed_tokens(torch.tensor([prefix[0]], device="cuda"))
+        self.text_encoder.model.embed_tokens(torch.tensor([prefix[0]], device="cuda" if torch.cuda.is_available() else self.text_encoder.model.embed_tokens.weight.device))
         tokens, truncated = self.engine.generate_tokens(prefix, end_token=ABC_END if phase == "abc" else MUSIC_END, max_tokens=sampling.max_tokens, seed=seed, logits_processor=YuE2LogitsProcessor(sampling, phase, direct), negative=negative, cfg_scale=cfg_scale, callback=callback, abort_fn=self._abort_requested, stop_fn=self._early_stop_requested if phase == "semantic" else None, stop_min_tokens=sampling.min_tokens if self._early_stop else 0, progress_label="YuE2 score" if phase == "abc" else "YuE2 semantic audio", initial_cache_tokens=60 * self.frame_rate if phase == "semantic" else 0)
         self.last_truncated[phase] = truncated
         if self._early_stop and phase == "semantic":

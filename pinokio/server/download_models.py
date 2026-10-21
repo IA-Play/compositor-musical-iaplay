@@ -18,7 +18,12 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from huggingface_hub import hf_hub_download
+try:
+    from huggingface_hub import hf_hub_download
+except ImportError:
+    import subprocess
+    subprocess.run([sys.executable, "-m", "pip", "install", "huggingface_hub>=0.23.0"], check=False)
+    from huggingface_hub import hf_hub_download
 
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 CKPTS_DIR = os.path.join(ROOT_DIR, "ckpts")
@@ -139,4 +144,21 @@ def download_all():
 
 
 if __name__ == "__main__":
+    if "--only-if-installed" in sys.argv:
+        mode_file = os.path.join(ROOT_DIR, ".iaplay_mode")
+        ar_file = os.path.join(CKPTS_DIR, "YuE2_AR", "YuE2_AR_int8_convrot.safetensors")
+        is_lite = False
+        if os.path.isfile(mode_file):
+            try:
+                with open(mode_file, "r", encoding="utf-8") as mf:
+                    if mf.read().strip().lower() == "lite" and not os.path.isfile(ar_file):
+                        is_lite = True
+            except Exception:
+                pass
+        elif not os.path.isfile(ar_file):
+            is_lite = True
+        if is_lite:
+            print("[IAPLAY Studio] Modo Leve detectado (pesos YuE2 não instalados). Pulando download de 6 GB na atualização.")
+            print("Para instalar os modelos musicais locais a qualquer momento, clique em 'Baixar Modelos YuE2'.")
+            sys.exit(0)
     download_all()

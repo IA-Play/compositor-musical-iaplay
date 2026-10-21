@@ -126,6 +126,12 @@ def probe_vllm_runtime(force=False):
 
 def resolve_lm_decoder_engine(requested_engine, engines_available = []):
     requested_engine = str(requested_engine or "").strip().lower()
+    try:
+        import torch
+        if not torch.cuda.is_available() or getattr(torch.version, "hip", None):
+            return "legacy"
+    except Exception:
+        return "legacy"
     probe_result = probe_vllm_runtime()
     supported = bool(probe_result.get("supported", False))
     cg_available = "cg" in engines_available

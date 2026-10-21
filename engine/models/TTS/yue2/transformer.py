@@ -95,8 +95,8 @@ class YuE2AR(Qwen3ForCausalLM):
     @torch.inference_mode()
     def condition(self, token_ids):
         """Cache each layer's AR keys/values for acoustic flow matching."""
-        positions = torch.arange(len(token_ids), device="cuda")
-        x = self.model.embed_tokens(torch.tensor(token_ids, device="cuda"))
+        positions = torch.arange(len(token_ids), device="cuda" if torch.cuda.is_available() else self.model.embed_tokens.weight.device)
+        x = self.model.embed_tokens(torch.tensor(token_ids, device="cuda" if torch.cuda.is_available() else self.model.embed_tokens.weight.device))
         cache = []
         for layer in self.model.layers:
             h = layer.input_layernorm(x)
@@ -178,7 +178,7 @@ class YuE2Acoustic(nn.Module):
     @torch.inference_mode()
     def synthesize(self, noise, cache_list, ar_length, steps, report):
         cache = cache_list.pop()
-        state = noise.to(device="cuda", dtype=self.vae2llm.weight.dtype)
+        state = noise.to(device="cuda" if torch.cuda.is_available() else self.vae2llm.weight.device, dtype=self.vae2llm.weight.dtype)
         length = len(state) + 2
         positions = torch.arange(ar_length, ar_length + length, device=state.device)[None]
         cos, sin = self.rotary(positions)

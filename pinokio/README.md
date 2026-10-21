@@ -4,14 +4,15 @@
 
 **Composição lírica avançada, engenharia de prompts Suno/Udio/Mureka e geração musical neural local com YuE2 3B e SheetSage2.**
 
-[![Pinokio Compatible](https://img.shields.io/badge/Pinokio-Ready-blue?style=for-the-badge&logo=electron)](https://pinokio.computer)
+[![Download no Pinokio](https://img.shields.io/badge/Download_no_Pinokio-1--Click-orange?style=for-the-badge&logo=electron)](https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay)
+[![Pinokio Compatible](https://img.shields.io/badge/Pinokio-Ready-blue?style=for-the-badge&logo=electron)](https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay)
 [![YuE2 3B](https://img.shields.io/badge/Engine-YuE2_3B_Neural-purple?style=for-the-badge)](https://github.com/IA-Play/compositor-musical-iaplay)
 [![SheetSage2](https://img.shields.io/badge/Transcription-SheetSage2_MERT-green?style=for-the-badge)](https://github.com/IA-Play/compositor-musical-iaplay)
 [![React](https://img.shields.io/badge/React-18-61DAFB?style=for-the-badge&logo=react)](https://reactjs.org/)
 [![Vite](https://img.shields.io/badge/Vite-7.0-646CFF?style=for-the-badge&logo=vite)](https://vitejs.dev/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css)](https://tailwindcss.com/)
 
-[Pinokio 1-Click](#-instalação-em-1-clique-via-pinokio) • [Funcionalidades](#-principais-funcionalidades) • [Motor YuE2 Local](#-motor-neural-local-yue2--sheetsage2) • [Humanizador Anti-IA](#-sistema-anti-detecção-de-ia) • [API](#-documentação-da-api)
+[⚡ Baixar no Pinokio](https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay) • [Novidades v3.5.0](#-novidades-da-versão-350) • [Funcionalidades](#-principais-funcionalidades) • [Motor YuE2 Local](#-motor-neural-local-yue2--sheetsage2) • [API](#-documentação-da-api)
 
 </div>
 
@@ -25,6 +26,53 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 3. **Criação de Covers & Transcrição (SheetSage2):** Carregue um áudio de referência (.mp3, .wav, .m4a) para extrair harmonia e melodia guia automaticamente.
 4. **Humanizador de Áudio & Anti-Detecção:** Remove artefatos de IA, normaliza dinâmica e limpa assinaturas para distribuição em plataformas.
 5. **Duração Expandida:** Geração de até 10 minutos (600 segundos) de música contínua.
+
+---
+
+## 🚀 Novidades da Versão 3.5.0
+
+- 📦 **Instalação Modular Inteligente (Escolha entre Modo Completo ou Modo Leve):**
+  - Agora você escolhe no momento da instalação (tanto pelo **Pinokio** quanto pelo **`instalar.bat` Standalone**) qual pacote deseja instalar:
+    - **Modo Completo (~6 GB):** Instala o Criador de Letras/Prompts + Estúdio Musical Local **YuE2 3B & SheetSage2**.
+    - **Modo Leve / Rápido (Sem baixar 6 GB):** Instala em poucos segundos apenas o **Criador de Letras e Engenharia de Prompts (Suno, Udio, Mureka)**. Caso queira gerar músicas localmente no futuro, você pode baixar o YuE2 a qualquer momento com 1 clique pelo menu ou dentro do próprio aplicativo!
+- 🔴🟢 **Suporte Oficial a Placas de Vídeo AMD Radeon (DirectML & ROCm) + NVIDIA CUDA + CPU:**
+  - Nova camada de compatibilidade de hardware (`server/gpu_compat.py`) que detecta automaticamente placas **AMD Radeon RX/Vega** (via DirectML no Windows e ROCm/HIP no Linux), **NVIDIA GeForce/RTX** (CUDA), **Apple Silicon** (MPS) e **CPU**.
+  - Patches profundos no motor `wgp.py`, `nanovllm`, `yue2` e `SheetSage2` para substituir chamadas exclusivas de CUDA por alocação multi-dispositivo dinâmica e segura, exibindo o badge da sua GPU diretamente no cabeçalho do Estúdio YuE2.
+- 🌐 **Suporte Multilíngue Completo (Português, Inglês e Espanhol):**
+  - Todo o IAPLAY Studio agora opera nativamente em 3 idiomas: Editor de composição, tags, seletor de motores, painel de regras de seção, modais, configurações e centro de produção YuE2.
+  - Sistema de fallback multinível em cascata (`Idioma Selecionado -> PT -> EN -> Chave`), garantindo interface limpa e sem textos crus mesmo em transições de rede.
+- ⏳ **Feedback Dinâmico de Hardware & Carregamento de Tensores:**
+  - Banners amigáveis e explicativos alertando o usuário enquanto os pesos neurais estão sendo alocados na memória (GPU/RAM), tanto para o Ollama quanto para o YuE2.
+- 🦙 **Seletores Dinâmicos de Modelos Locais & Nuvem:**
+  - Detecção automática e listagem em tempo real de modelos baixados no Ollama, com troca rápida em 1 clique.
+  - Seletor de modelos da NVIDIA NIM Cloud gratuita com descrições detalhadas de cada inteligência.
+- 🐛 **Auditoria Geral e Correção de Bugs:**
+  - Padronização dos modais nativos (`ModalProvider`) no Dashboard e Editor de Texto Rico, evitando bloqueios de promessa ao fechar alertas pelo fundo.
+  - Correção do rastreamento de alterações não salvas (`isDirty`) ao alternar entre diferentes projetos.
+  - Navegação fluida com tecla `Enter` nas etapas do Wizard de Criação.
+
+---
+
+## 🚀 Novidades da Versão 3.4.0
+
+- 🎤 **Novo Painel de Regras de Seção & Efeitos Vocais (100+ Técnicas):**
+  - Personalize cada seção musical (`[Verse]`, `[Chorus]`, `[Bridge]`, `[Intro]`, `[Outro]`) com precisão cirúrgica.
+  - Catálogo nativo com mais de 100 técnicas vocais categorizadas: **Drive & Rasp**, **Melismas & Riffs**, **Belting**, **Falsete**, **Vibrato**, **Portamento & Slides**, **Sustentação**, **Dinâmica**, **Articulação** e **Ad-libs cantados ( )**.
+  - As tags e diretivas são aplicadas diretamente na letra e estrutura sem perda de métrica.
+- ⚡ **Suporte a NVIDIA NIM Gratuita (Ultra-Rápido):**
+  - Integração com a API gratuita da NVIDIA Cloud com latência ultrabaixa.
+  - Modelos de ponta disponíveis: **Llama 3.1 Nemotron 70B**, **Mistral Large 2 (123B)**, **Mistral NeMo 12B**, **Mixtral 8x22B MoE** e **DeepSeek v4.1 Flash**.
+  - Proxy local dedicado para contornar qualquer restrição de CORS e garantir estabilidade.
+- 🧠 **Engenharia de Prompts de Elite com Adaptação Dinâmica:**
+  - Novo algoritmo `DYNAMIC STYLE ADAPTATION`: quando você altera o estilo musical (ex: de Rock para Pagode), o motor descarta automaticamente instrumentos anteriores e sintetiza novas notas de produção 100% autênticas do gênero alvo.
+  - Protocolo `ZERO TRUNCATION` rigoroso: preservação de 100% dos versos e palavras da letra.
+  - Injeção e validação automática de `[PROMPT_GLOBAL]` com keywords de estilo e atmosfera.
+  - Limpeza inteligente de colchetes órfãos e formatação limpa para Suno, Udio e YuE2.
+- 💾 **Persistência Confiável de Projetos:**
+  - Sincronização em tempo real entre o estado da aplicação (Zustand) e o banco local.
+  - Suporte a salvamento forçado com snapshot atualizado.
+- 🎛️ **Detecção Aprimorada do Servidor Neural:**
+  - Verificação de porta 42024 ativa para evitar inicializações duplicadas do YuE2.
 
 ---
 
@@ -106,13 +154,17 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 
 ## ⚡ Instalação em 1-Clique via Pinokio
 
-O IAPLAY Studio foi projetado para instalação e execução simplificada através do ecossistema [Pinokio](https://pinokio.computer):
+Você pode instalar o IAPLAY Studio diretamente em 1 clique pelo navegador ou pelo próprio Pinokio:
 
+👉 **[Abrir e Baixar no Pinokio (1-Click Install)](https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay)**
+
+Ou manualmente dentro do app:
 1. Abra o **Pinokio**.
-2. Clique em **Discover** ou **Download** e cole o repositório:
+2. Clique em **Discover** ou **Download** e cole:
    ```
-   https://github.com/IA-Play/compositor-musical-iaplay
+   https://pinokio.co/apps/github-com-ia-play-compositor-musical-iaplay
    ```
+   *(ou a URL do repositório: `https://github.com/IA-Play/compositor-musical-iaplay`)*
 3. Clique em **Instalar / Reinstalar**:
    - O Pinokio instalará as dependências do Node.js, configurará o ambiente Python virtual com PyTorch CUDA e todas as bibliotecas necessárias.
 4. Clique em **Baixar Modelos YuE2**:

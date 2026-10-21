@@ -27,19 +27,29 @@ if exist "%~dp0..\env\Scripts\python.exe" (
 
 echo [IAPLAY Engine] Utilizando Python: %PYTHON_EXE%
 
-REM 2. Verifica se torchvision e diffusers estao presentes no ambiente
-"%PYTHON_EXE%" -c "import torchvision" >nul 2>&1
+REM 2. Garante que FastAPI e Uvicorn estejam presentes no ambiente
+"%PYTHON_EXE%" -c "import fastapi, uvicorn" >nul 2>&1
 if %ERRORLEVEL% neq 0 (
-    echo [IAPLAY Engine] Instalando pacote essencial torchvision...
+    echo [IAPLAY Engine] Instalando pacotes leves do servidor local...
     set PIP_REQUIRE_VIRTUALENV=false
-    uv pip install "torchvision>=0.17.0" --python "%PYTHON_EXE%" >nul 2>&1 || "%PYTHON_EXE%" -m pip install "torchvision>=0.17.0"
+    uv pip install "fastapi>=0.110.0" "uvicorn>=0.28.0" "python-multipart>=0.0.9" "requests>=2.31.0" --python "%PYTHON_EXE%" >nul 2>&1 || "%PYTHON_EXE%" -m pip install "fastapi>=0.110.0" "uvicorn>=0.28.0" "python-multipart>=0.0.9" "requests>=2.31.0"
 )
 
-"%PYTHON_EXE%" -c "import diffusers" >nul 2>&1
-if %ERRORLEVEL% neq 0 (
-    echo [IAPLAY Engine] Instalando pacote essencial diffusers...
-    set PIP_REQUIRE_VIRTUALENV=false
-    uv pip install "diffusers>=0.30.0" --python "%PYTHON_EXE%" >nul 2>&1 || "%PYTHON_EXE%" -m pip install "diffusers>=0.30.0"
+REM 2.1 Se PyTorch estiver instalado, verifica se torchvision e diffusers estao presentes
+"%PYTHON_EXE%" -c "import torch" >nul 2>&1
+if %ERRORLEVEL% equ 0 (
+    "%PYTHON_EXE%" -c "import torchvision" >nul 2>&1
+    if %ERRORLEVEL% neq 0 (
+        echo [IAPLAY Engine] Instalando pacote essencial torchvision...
+        set PIP_REQUIRE_VIRTUALENV=false
+        uv pip install "torchvision>=0.17.0" --python "%PYTHON_EXE%" >nul 2>&1 || "%PYTHON_EXE%" -m pip install "torchvision>=0.17.0"
+    )
+    "%PYTHON_EXE%" -c "import diffusers" >nul 2>&1
+    if %ERRORLEVEL% neq 0 (
+        echo [IAPLAY Engine] Instalando pacote essencial diffusers...
+        set PIP_REQUIRE_VIRTUALENV=false
+        uv pip install "diffusers>=0.30.0" --python "%PYTHON_EXE%" >nul 2>&1 || "%PYTHON_EXE%" -m pip install "diffusers>=0.30.0"
+    )
 )
 
 REM 3. Inicia automaticamente o Ollama no PC se instalado e desligado

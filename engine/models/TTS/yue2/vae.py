@@ -306,7 +306,8 @@ class YuE2VAE(PreTrainedModel):
     @torch.inference_mode()
     def decode(self, latent):
         """Full waveform [B,2,1920*T-64], without clipping."""
-        with torch.autocast(device_type=self.decoder_device.type, enabled=False):
+        _ac_type = self.decoder_device.type if self.decoder_device.type in ("cuda", "cpu", "mps", "xpu") else "cpu"
+        with torch.autocast(device_type=_ac_type, enabled=False):
             return self.decoder(latent.to(device=self.decoder_device, dtype=next(self.decoder.parameters()).dtype))
 
     def natural_output_length(self, frames):

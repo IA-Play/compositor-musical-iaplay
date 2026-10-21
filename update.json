@@ -34,6 +34,7 @@
       }
     },
     {
+      "when": "{{exists('engine/ckpts/YuE2/yue-s1-3B-anneal-en-cot')}}",
       "method": "script.start",
       "params": {
         "uri": "torch.js",
@@ -49,14 +50,14 @@
         "venv": "env",
         "venv_python": "3.11",
         "message": [
-          "python server/download_models.py"
+          "python server/download_models.py --only-if-installed"
         ]
       }
     },
     {
       "method": "notify",
       "params": {
-        "html": "IAPLAY Studio atualizado com sucesso! Dependências e modelos verificados."
+        "html": "IAPLAY Studio atualizado com sucesso! Dependências e configurações verificadas."
       }
     }
   ]

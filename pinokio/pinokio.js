@@ -1,9 +1,11 @@
 export default {
-  version: "2.0",
+  version: "3.5",
   title: "IAPLAY Studio",
-  description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio/Mureka e Geração YuE2 com Transcrição SheetSage2",
+  description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio/Mureka e Geração YuE2 (NVIDIA / AMD / CPU) com Transcrição SheetSage2",
   icon: "public/favicon.ico",
   menu: async (kernel, info) => {
+    let installed = info.exists("node_modules") && info.exists("env");
+    let modelsInstalled = info.exists("engine/ckpts/YuE2/yue-s1-3B-anneal-en-cot");
     let running = {
       install: info.running("install.json"),
       start: info.running("start.json"),
@@ -74,6 +76,32 @@ export default {
       }];
     }
 
+    if (!installed) {
+      return [
+        {
+          default: true,
+          icon: "fa-solid fa-plug",
+          text: "Instalar IAPLAY (Escolher Modo)",
+          href: "install.json",
+          description: "Escolha entre Modo Completo (Com YuE2 ~6 GB) ou Modo Leve (Apenas Prompts e Letras)"
+        },
+        {
+          icon: "fa-solid fa-bolt",
+          text: "Instalação Rápida / Leve (Só Prompts e Letras)",
+          href: "install.json",
+          params: { mode: "lite" },
+          description: "Instala apenas o Criador de Letras e Prompts (Suno, Udio, Mureka) sem baixar 6 GB"
+        },
+        {
+          icon: "fa-solid fa-music",
+          text: "Instalação Completa (Com Estúdio YuE2 ~6 GB)",
+          href: "install.json",
+          params: { mode: "full" },
+          description: "Instala tudo incluindo motor musical local YuE2 e SheetSage2 (NVIDIA / AMD / CPU)"
+        }
+      ];
+    }
+
     return [
       {
         default: true,
@@ -83,10 +111,10 @@ export default {
         description: "Iniciar servidor local e abrir Estúdio"
       },
       {
-        icon: "fa-solid fa-cloud-arrow-down",
-        text: "Baixar Modelos YuE2",
+        icon: modelsInstalled ? "fa-solid fa-check-double" : "fa-solid fa-cloud-arrow-down",
+        text: modelsInstalled ? "Verificar / Reparar Modelos YuE2" : "Baixar Modelos YuE2 (Ativar Estúdio ~6 GB)",
         href: "download_models.json",
-        description: "Baixar pesos neurais YuE2 3B e SheetSage2 (~6 GB) para geração local"
+        description: "Baixar/verificar pesos neurais YuE2 3B e SheetSage2 (~6 GB) + PyTorch (NVIDIA/AMD/CPU)"
       },
       {
         icon: "fa-solid fa-arrows-rotate",
@@ -96,9 +124,9 @@ export default {
       },
       {
         icon: "fa-solid fa-download",
-        text: "Instalar / Reinstalar",
+        text: "Instalar / Reinstalar (Escolher Modo)",
         href: "install.json",
-        description: "Instalar dependências (Node.js, Python e PyTorch)"
+        description: "Reinstalar escolhendo entre Modo Completo (YuE2) ou Modo Leve (Prompts)"
       },
       {
         icon: "fa-solid fa-rotate-left",

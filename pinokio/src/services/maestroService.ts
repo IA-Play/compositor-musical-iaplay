@@ -20,7 +20,7 @@ export interface YuEGenerationOptions {
 
 export interface YuEJobProgress {
     jobId: string;
-    status: 'queued' | 'held' | 'running' | 'completed' | 'failed' | 'cancelled' | 'unknown';
+    status: 'queued' | 'held' | 'loading' | 'running' | 'completed' | 'failed' | 'cancelled' | 'unknown';
     progress: number; // 0.0 a 1.0
     step: number;
     totalSteps: number;
@@ -37,6 +37,15 @@ export interface MaestroStatus {
     message?: string;
     modelsInstalled?: boolean;
     modelsProgress?: number;
+    gpu?: string;
+    gpuVendor?: string;
+    backend?: string;
+    device?: string;
+    torchInstalled?: boolean;
+    isLoadingPipeline?: boolean;
+    pipelineLoadingPhase?: string;
+    ollamaOnline?: boolean;
+    ollamaInstalled?: boolean;
 }
 
 export interface ModelDownloadState {
@@ -167,6 +176,15 @@ export const checkMaestroStatus = async (customEndpoint?: string): Promise<Maest
                 activeJobsCount: 0,
                 modelsInstalled: data.models_installed ?? true,
                 modelsProgress: data.models_progress ?? 1.0,
+                gpu: data.gpu || 'GPU Ativa',
+                gpuVendor: data.gpu_vendor || 'cpu',
+                backend: data.backend || 'CPU',
+                device: data.device || 'cuda',
+                torchInstalled: data.torch_installed ?? true,
+                isLoadingPipeline: data.is_loading_pipeline ?? false,
+                pipelineLoadingPhase: data.pipeline_loading_phase || '',
+                ollamaOnline: data.ollama_online ?? false,
+                ollamaInstalled: data.ollama_installed ?? false,
                 message: data.models_installed
                     ? `Motor YuE2 Conectado (${data.gpu || 'GPU Ativa'})`
                     : `Motor YuE2 Conectado (Modelos pendentes de download)`

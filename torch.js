@@ -18,7 +18,7 @@ module.exports = {
         },
         "message": [
           "uv pip install typing-extensions>=4.10.0",
-          "uv pip install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu130 --force-reinstall --no-deps"
+          "uv pip install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu130 --force-reinstall --no-deps || uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall --no-deps"
         ]
       },
       "next": null
@@ -41,7 +41,7 @@ module.exports = {
         },
         "message": [
           "uv pip install typing-extensions>=4.10.0",
-          "uv pip install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu130 --force-reinstall --no-deps"
+          "uv pip install torch==2.10.0 torchvision==0.25.0 torchaudio==2.10.0 --index-url https://download.pytorch.org/whl/cu130 --force-reinstall --no-deps || uv pip install torch==2.7.0 torchvision==0.22.0 torchaudio==2.7.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall --no-deps"
         ]
       },
       "next": null
@@ -69,7 +69,7 @@ module.exports = {
       },
       "next": null
     },
-    // AMD Windows
+    // AMD Windows (DirectML)
     {
       "when": "{{platform === 'win32' && gpu === 'amd'}}",
       "method": "shell.run",
@@ -92,7 +92,7 @@ module.exports = {
       },
       "next": null
     },
-    // AMD Linux ROCm
+    // AMD Linux (ROCm)
     {
       "when": "{{platform === 'linux' && gpu === 'amd'}}",
       "method": "shell.run",

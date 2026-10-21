@@ -29,6 +29,8 @@ dist-ssr/
 .env.php
 .env.local
 .env.*.local
+.iaplay_mode
+pinokio/.iaplay_mode
 
 # Cache and python bytecode
 cache/

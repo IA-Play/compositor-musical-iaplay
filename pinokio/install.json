@@ -1,5 +1,47 @@
 {
+  "requires": {
+    "bundle": "ai"
+  },
   "run": [
+    {
+      "when": "{{!args || !args.mode}}",
+      "method": "input",
+      "params": {
+        "title": "Modo de Instalação do IAPLAY Studio",
+        "description": "Escolha como deseja instalar o IAPLAY Studio. No Modo Leve você instala apenas o Criador de Letras e Prompts (Suno, Udio, Mureka) em poucos segundos, podendo baixar o motor musical YuE2 (~6 GB) depois quando quiser.",
+        "form": [
+          {
+            "type": "select",
+            "key": "mode",
+            "title": "Selecione o pacote de instalação",
+            "default": "full",
+            "items": [
+              {
+                "text": "Modo Completo — Criador de Letras/Prompts + Estúdio Musical YuE2 Local (~6 GB, NVIDIA / AMD / CPU)",
+                "value": "full"
+              },
+              {
+                "text": "Modo Leve / Rápido — Apenas Criador de Letras e Prompts (Suno, Udio, Mureka) — Sem baixar 6 GB",
+                "value": "lite"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "method": "local.set",
+      "params": {
+        "mode": "{{args && args.mode ? args.mode : (input && input.mode ? input.mode : 'full')}}"
+      }
+    },
+    {
+      "method": "fs.write",
+      "params": {
+        "path": ".iaplay_mode",
+        "text": "{{local.mode}}"
+      }
+    },
     {
       "method": "shell.run",
       "params": {
@@ -10,27 +52,78 @@
       }
     },
     {
+      "when": "{{!exists('env')}}",
+      "method": "shell.run",
+      "params": {
+        "message": [
+          "uv venv env --python 3.11 || uv venv env || python -m venv env"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode === 'lite'}}",
       "method": "shell.run",
       "params": {
         "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
+        "message": [
+          "uv pip install fastapi uvicorn pydantic soundfile numpy==1.26.4 requests huggingface_hub packaging psutil"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode !== 'lite'}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
         "message": [
           "uv pip install -r server/requirements.txt --index-strategy unsafe-best-match"
         ]
       }
     },
     {
+      "when": "{{local.mode !== 'lite'}}",
       "method": "script.start",
       "params": {
         "uri": "torch.js",
         "params": {
-          "venv": "env"
+          "venv": "env",
+          "venv_python": "3.11"
         }
       }
     },
     {
+      "when": "{{local.mode !== 'lite'}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "message": [
+          "python server/download_models.py"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode === 'lite'}}",
       "method": "notify",
       "params": {
-        "html": "Instalação do IAPLAY Studio concluída! Clique em 'Baixar Modelos YuE2' para baixar os pesos neurais ou em 'Iniciar IAPLAY'."
+        "html": "Instalação Rápida (Modo Leve) concluída! O Criador de Letras e Prompts está pronto. Se quiser usar o Estúdio Musical YuE2 no futuro, basta clicar em 'Baixar Modelos YuE2'."
+      }
+    },
+    {
+      "when": "{{local.mode !== 'lite'}}",
+      "method": "notify",
+      "params": {
+        "html": "Instalação Completa do IAPLAY Studio concluída com sucesso! Todos os pacotes e modelos neurais YuE2 foram instalados. Clique em 'Iniciar IAPLAY'."
       }
     }
   ]

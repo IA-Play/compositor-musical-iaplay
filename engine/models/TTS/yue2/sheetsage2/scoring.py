@@ -83,7 +83,7 @@ def score_audio(filename, checkpoint, melody_only, callback, abort_fn):
         handles = [layer.register_forward_hook(layer_hook(index)) for index, layer in enumerate(model.encoder.layers)]
         handles += [layer.register_forward_hook(decoder_hook) for layer in model.decoder.layers]
         transcriber = Transcriber(model)
-        transcriber.device = torch.device("cuda")
+        transcriber.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         result = transcriber.analyze(filename, melody_only=melody_only, progress=on_progress)
         for warning in result["warnings"]:
             print(f"[SheetSage2] {warning}", flush=True)

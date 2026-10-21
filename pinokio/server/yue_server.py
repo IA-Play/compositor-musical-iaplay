@@ -18,16 +18,33 @@ if sys.platform == "win32":
 
 import re
 import shutil
+import subprocess
 import time
 import json
 import uuid
 import threading
 import traceback
+import urllib.request
+import urllib.error
 from datetime import datetime
 from typing import Optional, Dict, Any, List
 
-import torch
-import soundfile as sf
+try:
+    import torch
+except ImportError:
+    torch = None  # type: ignore
+
+try:
+    import soundfile as sf
+except ImportError:
+    sf = None  # type: ignore
+
+try:
+    from server.gpu_compat import get_gpu_info, apply_torch_cuda_compat_shims, ensure_pytorch_installed
+except ImportError:
+    from gpu_compat import get_gpu_info, apply_torch_cuda_compat_shims, ensure_pytorch_installed
+
+apply_torch_cuda_compat_shims()
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request, BackgroundTasks, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
@@ -75,6 +92,79 @@ def ensure_engine_ckpts_and_config():
                 print(f"[IAPLAY Engine] Aviso ao vincular engine/ckpts: {e}")
 
 ensure_engine_ckpts_and_config()
+
+def ensure_essential_dependencies():
+    """Garante que torchvision e diffusers estejam disponíveis para evitar falhas em qualquer computador."""
+    for pkg_name, pip_pkg in [("torchvision", "torchvision>=0.17.0"), ("diffusers", "diffusers>=0.30.0")]:
+        try:
+            __import__(pkg_name)
+        except ImportError:
+            print(f"[IAPLAY Engine] Pacote '{pkg_name}' não encontrado no ambiente. Instalando {pip_pkg}...")
+            try:
+                import subprocess
+                subprocess.run([sys.executable, "-m", "pip", "install", pip_pkg], check=False)
+                print(f"[IAPLAY Engine] Pacote '{pkg_name}' instalado com sucesso!")
+            except Exception as e:
+                print(f"[IAPLAY Engine] Falha ao auto-instalar {pkg_name}: {e}")
+
+# ensure_essential_dependencies() é chamado sob demanda ao carregar o pipeline YuE2 para inicialização instantânea
+
+# Gestão inteligente do serviço local Ollama
+_ollama_process = None
+
+def find_ollama_path() -> Optional[str]:
+    """Localiza o binário do Ollama no computador do usuário."""
+    cmd = shutil.which("ollama")
+    if cmd:
+        return cmd
+    common_paths = [
+        os.path.expandvars(r"%LOCALAPPDATA%\Programs\Ollama\ollama.exe"),
+        r"C:\Program Files\Ollama\ollama.exe",
+        os.path.expanduser("~/AppData/Local/Programs/Ollama/ollama.exe"),
+        "/usr/local/bin/ollama",
+        "/usr/bin/ollama"
+    ]
+    for p in common_paths:
+        if os.path.isfile(p):
+            return p
+    return None
+
+def is_ollama_online(port: int = 11434, timeout: float = 1.5) -> bool:
+    """Verifica se a API local do Ollama está respondendo."""
+    try:
+        req = urllib.request.Request(f"http://127.0.0.1:{port}/api/tags")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+def start_ollama_background() -> bool:
+    """Inicia o Ollama no background caso não esteja rodando."""
+    global _ollama_process
+    if is_ollama_online():
+        return True
+    ollama_bin = find_ollama_path()
+    if not ollama_bin:
+        return False
+    try:
+        flags = 0
+        if sys.platform == "win32":
+            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+        _ollama_process = subprocess.Popen(
+            [ollama_bin, "serve"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=flags
+        )
+        print(f"[IAPLAY Engine] Processo Ollama iniciado via: {ollama_bin}")
+        return True
+    except Exception as e:
+        print(f"[IAPLAY Engine] Erro ao iniciar Ollama em background: {e}")
+        return False
+
+# Inicia thread em background para acordar o Ollama se instalado
+threading.Thread(target=lambda: start_ollama_background() if not is_ollama_online() else None, daemon=True).start()
+
 
 
 
@@ -223,6 +313,12 @@ def _model_download_worker():
             _download_state["downloaded_files"] = 0
             _download_state["cancel_requested"] = False
 
+        # Caso o usuário tenha instalado no Modo Leve (sem PyTorch), instala automaticamente o PyTorch para a GPU dele
+        def _update_dl_msg(msg: str):
+            with _download_lock:
+                _download_state["current_file"] = msg
+        ensure_pytorch_installed(progress_callback=_update_dl_msg)
+
         total_files = len(REQUIRED_MODEL_FILES)
         total_bytes = sum(s for _, s in REQUIRED_MODEL_FILES)
         bytes_done = 0
@@ -287,9 +383,12 @@ def _model_download_worker():
             _download_state["error"] = str(e)
 
 
-def get_pipeline():
+_is_loading_pipeline = False
+_pipeline_loading_phase = ""
+
+def get_pipeline(job_id: Optional[str] = None):
     """Carrega o pipeline do YuE2 na GPU através do integrador nativo com MMGP e VLLM."""
-    global _pipeline, _offloadobj
+    global _pipeline, _offloadobj, _is_loading_pipeline, _pipeline_loading_phase
     with _pipeline_lock:
         if _pipeline is None:
             status = check_models_status()
@@ -299,6 +398,15 @@ def get_pipeline():
                     f"Modelos YuE2 não encontrados: {missing_str}. "
                     f"Use a opção 'Baixar Modelos' diretamente no IAPLAY para instalá-los."
                 )
+
+            _is_loading_pipeline = True
+            _pipeline_loading_phase = "Carregando pesos neurais do YuE2 na GPU/VRAM..."
+            if job_id:
+                with _jobs_lock:
+                    if job_id in _jobs:
+                        _jobs[job_id]["status"] = "loading"
+                        _jobs[job_id]["phase"] = "Carregando Tensores e Modelos Neurais na GPU / Memória..."
+                        _jobs[job_id]["message"] = "Carregando pesos do YuE2 3B e SheetSage2 na VRAM/RAM... Cada computador possui configurações diferentes, por favor aguarde até a conclusão."
 
             print("[IAPLAY Engine] Inicializando YuE2 através do pipeline nativo Maestro/MMGP...")
             prev_cwd = os.getcwd()
@@ -322,10 +430,15 @@ def get_pipeline():
                 except Exception as e:
                     print(f"[IAPLAY Engine] Aviso ao configurar files_locator: {e}")
 
+                ensure_essential_dependencies()
+                ensure_pytorch_installed()
+                apply_torch_cuda_compat_shims()
                 import wgp
                 _pipeline, _offloadobj = wgp.load_models("yue2", output_type="audio")
                 print("[IAPLAY Engine] YuE2 carregado com sucesso e pronto para gerar músicas!")
+                _pipeline_loading_phase = "Pronto"
             finally:
+                _is_loading_pipeline = False
                 sys.argv = orig_argv
                 os.chdir(prev_cwd)
         return _pipeline, _offloadobj
@@ -337,12 +450,18 @@ def _run_generation_job(job_id: str, body: dict):
         if job_id not in _jobs:
             return
         job = _jobs[job_id]
-        job["status"] = "running"
-        job["phase"] = "Iniciando pipeline YuE2..."
+        job["status"] = "loading"
+        job["phase"] = "Carregando modelo na GPU/Memória (Aguarde alguns instantes)..."
         job["progress"] = 0.05
+        job["message"] = "Alocando tensores neurais na VRAM/RAM... Cada computador possui configurações e velocidades diferentes, por favor aguarde."
 
     try:
-        pipeline, offloadobj = get_pipeline()
+        pipeline, offloadobj = get_pipeline(job_id=job_id)
+        with _jobs_lock:
+            if job_id in _jobs:
+                job["status"] = "running"
+                job["phase"] = "Modelos prontos! Iniciando síntese musical..."
+                job["message"] = "Processando tensores neurais..."
 
         prompt = body.get("prompt", "").strip()
         alt_prompt = body.get("alt_prompt", "").strip()
@@ -449,7 +568,8 @@ def _run_generation_job(job_id: str, body: dict):
         filename = f"{timestamp}_seed{seed}_{clean_title}.wav"
         output_path = os.path.join(OUTPUTS_DIR, filename)
 
-        sf.write(output_path, audio_np, sample_rate)
+        import soundfile as _sf
+        _sf.write(output_path, audio_np, sample_rate)
         print(f"[IAPLAY Engine] Música salva com sucesso em: {output_path}")
 
         auto_humanize = body.get("humanize", True)
@@ -498,13 +618,22 @@ def _run_generation_job(job_id: str, body: dict):
 @app.get("/")
 def health_check():
     models_info = check_models_status()
+    gpu_info = get_gpu_info()
     return {
         "status": "online",
         "app": "IAPLAY Studio Engine",
         "model": "YuE2 3B Neural",
         "models_installed": models_info["installed"],
         "models_progress": models_info["progress"],
-        "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU",
+        "device": gpu_info.get("device_type", "cpu"),
+        "gpu": gpu_info.get("gpu_name", "Processador (CPU)"),
+        "gpu_vendor": gpu_info.get("vendor", "cpu"),
+        "backend": gpu_info.get("backend", "CPU"),
+        "torch_installed": gpu_info.get("torch_installed", False),
+        "is_loading_pipeline": _is_loading_pipeline,
+        "pipeline_loading_phase": _pipeline_loading_phase,
+        "ollama_online": is_ollama_online(),
+        "ollama_installed": bool(find_ollama_path()),
         "maestro_path": MAESTRO_APP_PATH,
         "ckpts_dir": CKPTS_DIR,
         "outputs_dir": OUTPUTS_DIR
@@ -771,6 +900,233 @@ def list_outputs(limit: int = 50):
 
     outputs.sort(key=lambda x: x["created_at"], reverse=True)
     return {"outputs": outputs[:limit], "total": len(outputs)}
+
+
+@app.get("/api/v1/ai/nvidia/models")
+def get_nvidia_models():
+    """Retorna a lista curada dos melhores modelos gratuitos ativos da NVIDIA NIM."""
+    return {
+        "models": [
+            {
+                "id": "nvidia/llama-3.1-nemotron-70b-instruct",
+                "name": "Llama 3.1 Nemotron 70B",
+                "badge": "Recomendado ⭐",
+                "description": "Otimizado pela NVIDIA, ultra-rápido, excelente para estruturas e raciocínio"
+            },
+            {
+                "id": "mistralai/mistral-large-2-instruct",
+                "name": "Mistral Large 2 (123B)",
+                "badge": "Top para Letras ✍️",
+                "description": "Excelente para rimas, métrica poética e português brasileiro natural"
+            },
+            {
+                "id": "nv-mistralai/mistral-nemo-12b-instruct",
+                "name": "Mistral NeMo 12B",
+                "badge": "Ultra Rápido ⚡",
+                "description": "Geração quase instantânea e ótimo consumo de tokens"
+            },
+            {
+                "id": "mistralai/mixtral-8x22b-v0.1",
+                "name": "Mixtral 8x22B MoE",
+                "badge": "MoE Potente 🧠",
+                "description": "Arquitetura MoE versátil com ampla gama estilística"
+            },
+            {
+                "id": "deepseek-ai/deepseek-v4.1-flash",
+                "name": "DeepSeek v4.1 Flash",
+                "badge": "Criativo 💡",
+                "description": "Perfeito para ideias musicais conceituais e metáforas"
+            },
+            {
+                "id": "google/gemma-3-12b-it",
+                "name": "Google Gemma 3 12B",
+                "badge": "Google 🌟",
+                "description": "Modelo moderno do Google na nuvem NVIDIA"
+            },
+            {
+                "id": "nvidia/nemotron-4-340b-instruct",
+                "name": "Nemotron 4 340B",
+                "badge": "Modelo Gigante 👑",
+                "description": "Maior modelo da NVIDIA para composições densas e ricas"
+            },
+            {
+                "id": "meta/llama2-70b",
+                "name": "Meta Llama 2 70B",
+                "badge": "Meta Clássico",
+                "description": "Modelo consagrado para estruturação musical"
+            }
+        ]
+    }
+
+
+@app.post("/api/v1/ai/nvidia")
+async def proxy_nvidia_chat(request: Request):
+    """
+    Proxy local para NVIDIA NIM (integrate.api.nvidia.com)
+    Resolve 100% dos problemas de CORS no navegador e timeout.
+    """
+    body = await request.json()
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header and "apiKey" in body:
+        auth_header = f"Bearer {body.pop('apiKey')}"
+
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Header Authorization Bearer da NVIDIA necessário")
+
+    target_url = "https://integrate.api.nvidia.com/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": auth_header,
+        "Accept": "application/json"
+    }
+
+    try:
+        data_bytes = json.dumps(body).encode("utf-8")
+        req_obj = urllib.request.Request(target_url, data=data_bytes, headers=headers, method="POST")
+        with urllib.request.urlopen(req_obj, timeout=40) as response:
+            resp_body = response.read().decode("utf-8")
+            return json.loads(resp_body)
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        try:
+            err_json = json.loads(err_body)
+            detail = err_json.get("detail") or err_json.get("error", {}).get("message") or err_body
+            raise HTTPException(status_code=e.code, detail=detail)
+        except Exception:
+            raise HTTPException(status_code=e.code, detail=err_body)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro de conexão com NVIDIA NIM: {str(e)}")
+
+
+# ============================================================================
+# Endpoints de Gestão e Proxy do Ollama (Local 100% Offline)
+# ============================================================================
+
+@app.get("/api/v1/ollama/status")
+def get_ollama_status_route():
+    """Verifica e retorna o estado de conexão e modelos do Ollama local."""
+    online = is_ollama_online()
+    if not online and find_ollama_path():
+        start_ollama_background()
+        for _ in range(4):
+            if is_ollama_online():
+                online = True
+                break
+            time.sleep(0.5)
+
+    models = []
+    if online:
+        try:
+            req = urllib.request.Request("http://127.0.0.1:11434/api/tags")
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                data = json.loads(resp.read().decode())
+                models = data.get("models", [])
+        except Exception:
+            pass
+
+    return {
+        "online": online,
+        "installed": bool(find_ollama_path()),
+        "models": models,
+        "ollama_path": find_ollama_path()
+    }
+
+
+@app.post("/api/v1/ollama/start")
+def start_ollama_route():
+    """Inicia o daemon do Ollama no computador caso não esteja rodando."""
+    if is_ollama_online():
+        return {"status": "online", "message": "Ollama já está ativo e respondendo."}
+    
+    started = start_ollama_background()
+    if not started:
+        raise HTTPException(status_code=404, detail="Ollama não encontrado no computador. Instale o Ollama via https://ollama.com")
+    
+    for _ in range(12):
+        if is_ollama_online():
+            return {"status": "online", "message": "Ollama iniciado com sucesso!"}
+        time.sleep(0.5)
+        
+    return {"status": "starting", "message": "Ollama está inicializando... Aguarde alguns instantes."}
+
+
+@app.get("/api/v1/ollama/tags")
+@app.get("/api/v1/ollama/api/tags")
+def proxy_ollama_tags():
+    """Proxy local para tags do Ollama (evita 100% de bloqueios de porta ou CORS)."""
+    if not is_ollama_online():
+        start_ollama_background()
+        time.sleep(1)
+
+    try:
+        req = urllib.request.Request("http://127.0.0.1:11434/api/tags")
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            return json.loads(resp.read().decode())
+    except Exception as e:
+        raise HTTPException(status_code=503, detail=f"Ollama offline na porta 11434: {e}")
+
+
+@app.post("/api/v1/ollama/generate")
+@app.post("/api/v1/ollama/api/generate")
+async def proxy_ollama_generate(request: Request):
+    """Proxy resiliente para /api/generate do Ollama com auto-start."""
+    if not is_ollama_online():
+        start_ollama_background()
+        for _ in range(8):
+            if is_ollama_online():
+                break
+            time.sleep(0.5)
+
+    if not is_ollama_online():
+        raise HTTPException(status_code=503, detail="Não foi possível iniciar o Ollama na porta 11434. Verifique se o aplicativo do Ollama está aberto.")
+
+    body = await request.json()
+    body["stream"] = False
+
+    target_url = "http://127.0.0.1:11434/api/generate"
+    headers = {"Content-Type": "application/json"}
+    try:
+        data_bytes = json.dumps(body).encode("utf-8")
+        req_obj = urllib.request.Request(target_url, data=data_bytes, headers=headers, method="POST")
+        with urllib.request.urlopen(req_obj, timeout=120) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        raise HTTPException(status_code=e.code, detail=err_body)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao comunicar com Ollama: {e}")
+
+
+@app.post("/api/v1/ollama/chat")
+@app.post("/api/v1/ollama/v1/chat/completions")
+async def proxy_ollama_chat(request: Request):
+    """Proxy resiliente para /v1/chat/completions do Ollama com auto-start."""
+    if not is_ollama_online():
+        start_ollama_background()
+        for _ in range(8):
+            if is_ollama_online():
+                break
+            time.sleep(0.5)
+
+    if not is_ollama_online():
+        raise HTTPException(status_code=503, detail="Ollama offline na porta 11434.")
+
+    body = await request.json()
+    target_url = "http://127.0.0.1:11434/v1/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    try:
+        data_bytes = json.dumps(body).encode("utf-8")
+        req_obj = urllib.request.Request(target_url, data=data_bytes, headers=headers, method="POST")
+        with urllib.request.urlopen(req_obj, timeout=120) as response:
+            return json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        raise HTTPException(status_code=e.code, detail=err_body)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao comunicar com Ollama: {e}")
+
+
+
 
 
 if __name__ == "__main__":
