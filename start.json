@@ -24,6 +24,8 @@
         "venv": "env",
         "venv_python": "3.11",
         "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
           "PIP_REQUIRE_VIRTUALENV": "false",
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
@@ -38,6 +40,8 @@
         "venv": "env",
         "venv_python": "3.11",
         "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
           "PIP_REQUIRE_VIRTUALENV": "false",
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },

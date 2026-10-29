@@ -4,6 +4,8 @@ set PYTHONIOENCODING=utf-8
 set PYTHONUTF8=1
 set PIP_REQUIRE_VIRTUALENV=false
 set PIP_NO_REQUIRE_VIRTUALENV=1
+set UV_NATIVE_TLS=true
+set UV_SYSTEM_CERTS=true
 
 echo [IAPLAY Engine] Verificando ambiente e servicos para IAPLAY...
 

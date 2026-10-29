@@ -31,7 +31,7 @@ ENGINE_DIR = os.path.join(ROOT_DIR, "engine")
 os.makedirs(CKPTS_DIR, exist_ok=True)
 
 HF_REPO_ID = "DeepBeepMeep/TTS"
-HF_REVISION = "864a479cbf3e810e1b2c1993b438510750e383b2"
+HF_REVISION = None
 
 FILES_TO_DOWNLOAD = [
     ("YuE2_AR/YuE2_AR_int8_convrot.safetensors", "Peso Auto-Regressivo YuE2 AR (Int8)", 2925023698),
@@ -92,7 +92,7 @@ def download_all():
     print("=" * 70)
     print("  IAPLAY Studio - Download Direto dos Modelos YuE2 3B & SheetSage2")
     print(f"  Destino: {CKPTS_DIR}")
-    print(f"  Repositório Hugging Face: {HF_REPO_ID} (rev: {HF_REVISION[:8]}...)")
+    print(f"  Repositório Hugging Face: {HF_REPO_ID} (rev: {HF_REVISION[:8] if HF_REVISION else 'main'})")
     print("=" * 70)
 
     # 1. Garante qwen_vae_config.json

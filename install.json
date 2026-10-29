@@ -4,6 +4,13 @@
   },
   "run": [
     {
+      "when": "{{exists('.installed')}}",
+      "method": "fs.rm",
+      "params": {
+        "path": ".installed"
+      }
+    },
+    {
       "when": "{{!args || !args.mode}}",
       "method": "input",
       "params": {
@@ -32,7 +39,7 @@
     {
       "method": "local.set",
       "params": {
-        "mode": "{{args && args.mode ? args.mode : (input && input.mode ? input.mode : 'full')}}"
+        "mode": "{{args && ('' + args.mode).includes('lite') ? 'lite' : (input && input.mode === 'lite' ? 'lite' : 'full')}}"
       }
     },
     {
@@ -67,6 +74,8 @@
         "venv": "env",
         "venv_python": "3.11",
         "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
           "PIP_REQUIRE_VIRTUALENV": "false",
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
@@ -82,6 +91,8 @@
         "venv": "env",
         "venv_python": "3.11",
         "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
           "PIP_REQUIRE_VIRTUALENV": "false",
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
@@ -91,14 +102,90 @@
       }
     },
     {
-      "when": "{{local.mode !== 'lite'}}",
-      "method": "script.start",
+      "when": "{{local.mode !== 'lite' && platform === 'win32' && gpu === 'nvidia'}}",
+      "method": "shell.run",
       "params": {
-        "uri": "torch.js",
-        "params": {
-          "venv": "env",
-          "venv_python": "3.11"
-        }
+        "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
+        "message": [
+          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode !== 'lite' && platform === 'linux' && gpu === 'nvidia'}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
+        "message": [
+          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode !== 'lite' && platform === 'win32' && gpu === 'amd'}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
+        "message": [
+          "uv pip install torch torch-directml torchaudio torchvision numpy==1.26.4 --force-reinstall"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode !== 'lite' && platform === 'darwin' && arch === 'arm64'}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
+        "message": [
+          "uv pip install torch torchvision torchaudio"
+        ]
+      }
+    },
+    {
+      "when": "{{local.mode !== 'lite' && gpu !== 'nvidia' && gpu !== 'amd' && !(platform === 'darwin' && arch === 'arm64')}}",
+      "method": "shell.run",
+      "params": {
+        "venv": "env",
+        "venv_python": "3.11",
+        "env": {
+          "UV_NATIVE_TLS": "true",
+          "UV_SYSTEM_CERTS": "true",
+          "PIP_REQUIRE_VIRTUALENV": "false",
+          "PIP_NO_REQUIRE_VIRTUALENV": "1"
+        },
+        "message": [
+          "uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --force-reinstall"
+        ]
       }
     },
     {
@@ -110,6 +197,13 @@
         "message": [
           "python server/download_models.py"
         ]
+      }
+    },
+    {
+      "method": "fs.write",
+      "params": {
+        "path": ".installed",
+        "text": "ok"
       }
     },
     {
