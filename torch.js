@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   run: [
     // Windows NVIDIA
     {
@@ -15,7 +15,7 @@ export default {
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install \"typing-extensions>=4.10.0\"",
           "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall"
         ]
       },
@@ -36,7 +36,7 @@ export default {
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install \"typing-extensions>=4.10.0\"",
           "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall"
         ]
       },
@@ -57,7 +57,7 @@ export default {
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install \"typing-extensions>=4.10.0\"",
           "uv pip install torch torchvision torchaudio"
         ]
       },
@@ -78,7 +78,7 @@ export default {
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install \"typing-extensions>=4.10.0\"",
           "uv pip install torch torch-directml torchaudio torchvision numpy==1.26.4 --force-reinstall"
         ]
       },
@@ -99,7 +99,7 @@ export default {
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install \"typing-extensions>=4.10.0\"",
           "uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/rocm6.3 --force-reinstall"
         ]
       },
@@ -119,7 +119,7 @@ export default {
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
+          "uv pip install \"typing-extensions>=4.10.0\"",
           "uv pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu --force-reinstall"
         ]
       }

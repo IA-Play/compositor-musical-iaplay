@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   run: [
     // Windows NVIDIA
     {

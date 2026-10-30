@@ -30,6 +30,8 @@ dist-ssr/
 .env.local
 .env.*.local
 .iaplay_mode
+.installed
+pinokio/.installed
 pinokio/.iaplay_mode
 
 # Cache and python bytecode

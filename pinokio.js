@@ -1,10 +1,10 @@
-export default {
+module.exports = {
   version: "3.5",
   title: "IAPLAY Studio",
   description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio/Mureka e Geração YuE2 (NVIDIA / AMD / CPU) com Transcrição SheetSage2",
   icon: "public/favicon.ico",
   menu: async (kernel, info) => {
-    let installed = info.exists(".installed");
+    let installed = info.exists(".installed") || (info.exists("env") && (info.exists("node_modules") || info.exists("dist")));
     let modelsInstalled = info.exists("ckpts/YuE2_AR/YuE2_AR_int8_convrot.safetensors") || info.exists("engine/ckpts/YuE2_AR/YuE2_AR_int8_convrot.safetensors");
     let running = {
       install: info.running("install.json"),

@@ -4,13 +4,6 @@
   },
   "run": [
     {
-      "when": "{{exists('.installed')}}",
-      "method": "fs.rm",
-      "params": {
-        "path": ".installed"
-      }
-    },
-    {
       "when": "{{!args || !args.mode}}",
       "method": "input",
       "params": {
@@ -114,8 +107,8 @@
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
-          "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall"
+          "uv pip install \"typing-extensions>=4.10.0\"",
+          "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128"
         ]
       }
     },
@@ -132,8 +125,8 @@
           "PIP_NO_REQUIRE_VIRTUALENV": "1"
         },
         "message": [
-          "uv pip install typing-extensions>=4.10.0",
-          "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128 --force-reinstall"
+          "uv pip install \"typing-extensions>=4.10.0\"",
+          "uv pip install torch==2.8.0 torchaudio==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu128"
         ]
       }
     },
