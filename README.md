@@ -29,6 +29,22 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
 
 ---
 
+## 🚀 Novidades da Versão 3.5.1 (30/10/2026)
+
+- 🔄 **Fim do Loop de Reinstalação no Pinokio:**
+  - O arquivo `pinokio.js` agora inspeciona de forma resiliente tanto a existência do marcador local `.installed` quanto a integridade do ambiente virtual (`env`) e dependências (`node_modules`/`dist`).
+  - O aplicativo inicia imediatamente ao clicar no card, sem jamais forçar nova instalação em ambientes já configurados.
+- ⚡ **Compatibilidade Completa com o Cache do Pinokio (CommonJS):**
+  - Migração de `pinokio.js` e `torch.js` para a especificação CommonJS (`module.exports`). Isso impede que o runtime do Electron retenha o menu de instalação em memória e garante reatividade instantânea dos botões de controle ("Iniciar IAPLAY", "Abrir IAPLAY Studio" e "Terminal").
+- 🛠️ **Correção Crítica no Instalador de Dependências do Windows:**
+  - Adicionadas as aspas protetoras obrigatórias nos comandos de shell (`"typing-extensions>=4.10.0"`), eliminando falhas silenciosas de redirecionamento que abortavam o instalador no meio do processo.
+- 🧹 **Remoção de Scripts de Anúncios Externos no Ambiente Local:**
+  - Removidos completamente os scripts de auto-ads do Google AdSense dos arquivos HTML do desktop/local, acabando com a abertura indesejada de múltiplas abas no navegador (`ep2.adtrafficquality.google.com` e `googleads`).
+- 💎 **Modelos YuE2 & SheetSage2 e Hardware NVIDIA CUDA Otimizados:**
+  - Testes e validação completa dos ~5.5 GB de pesos neurais oficiais em `ckpts/` com suporte nativo acelerado na GPU RTX/CUDA e AMD.
+
+---
+
 ## 🚀 Novidades da Versão 3.5.0
 
 - 📦 **Instalação Modular Inteligente (Escolha entre Modo Completo ou Modo Leve):**

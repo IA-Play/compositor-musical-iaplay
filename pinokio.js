@@ -1,5 +1,5 @@
 module.exports = {
-  version: "3.5",
+  version: "3.5.1",
   title: "IAPLAY Studio",
   description: "Estúdio IA para Criação de Letras, Estruturação de Prompts Suno/Udio/Mureka e Geração YuE2 (NVIDIA / AMD / CPU) com Transcrição SheetSage2",
   icon: "public/favicon.ico",
