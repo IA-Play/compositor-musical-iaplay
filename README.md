@@ -40,8 +40,8 @@ O **IAPLAY Studio** é uma estação de trabalho de áudio e inteligência artif
   - Adicionadas as aspas protetoras obrigatórias nos comandos de shell (`"typing-extensions>=4.10.0"`), eliminando falhas silenciosas de redirecionamento que abortavam o instalador no meio do processo.
 - 🧹 **Remoção de Scripts de Anúncios Externos no Ambiente Local:**
   - Removidos completamente os scripts de auto-ads do Google AdSense dos arquivos HTML do desktop/local, acabando com a abertura indesejada de múltiplas abas no navegador (`ep2.adtrafficquality.google.com` e `googleads`).
-- 💎 **Modelos YuE2 & SheetSage2 e Hardware NVIDIA CUDA Otimizados:**
-  - Testes e validação completa dos ~5.5 GB de pesos neurais oficiais em `ckpts/` com suporte nativo acelerado na GPU RTX/CUDA e AMD.
+- 🔴🟢 **Compatibilidade Total de Hardware (NVIDIA CUDA & AMD Radeon):**
+  - Suporte nativo e otimizado para placas **NVIDIA GeForce/RTX** (CUDA) e **AMD Radeon** (DirectML no Windows e ROCm no Linux), com testes e validação completa dos ~5.5 GB de pesos neurais oficiais em ckpts/.
 
 ---
 
